@@ -38,7 +38,7 @@
         h1, h2, h3, .settings-modal h2, .text-primary { color: var(--text-primary); }
         .play-pause-btn, .action-btn { background-color: var(--accent-primary); color: var(--bg-primary); }
         .play-pause-btn:hover, .action-btn:hover { background-color: var(--accent-hover); }
-        .accent-text, .tab.active { color: var(--accent-primary); }
+        .accent-text, .tab.active, .control-btn.active { color: var(--accent-primary); }
         .tab.active { border-bottom-color: var(--accent-primary); }
         .tab.active svg { stroke: var(--accent-primary); }
         .hover-bg:hover { background-color: var(--bg-tertiary); }
@@ -50,6 +50,7 @@
         input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; background: var(--text-primary); border-radius: 50%; }
         
         .modal-backdrop, .context-menu-backdrop { transition: opacity 0.3s ease-in-out; background-color: rgba(0,0,0,0.7); }
+        #prompt-input { color: var(--bg-primary); } /* Corrige color del texto en el input del modal */
         
         .view { display: none; height: 100%; }
         .view.active { display: block; }
@@ -58,26 +59,25 @@
         main::-webkit-scrollbar-track { background: var(--bg-secondary); }
         main::-webkit-scrollbar-thumb { background-color: var(--bg-interactive); border-radius: 10px; border: 2px solid var(--bg-secondary); }
         
-        .accordion-header { width: 100%; text-align: left; padding: 0.75rem 1rem; border-radius: 0.5rem; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: var(--text-primary); transition: background-color 0.2s; }
-        .accordion-header:hover { background-color: var(--bg-tertiary); }
-        .accordion-content { background-color: var(--bg-secondary); max-height: 0; overflow: hidden; transition: max-height 0.4s ease-in-out, padding 0.4s ease-in-out; padding: 0 1rem; }
-        .accordion-content.open { max-height: 500px; padding: 1rem; }
-        .accordion-icon { transition: transform 0.3s; }
-        .accordion-header.active .accordion-icon { transform: rotate(180deg); }
-
         #bottom-bar-wrapper { flex-shrink: 0; }
         #mini-player-bar {
             transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out;
-            max-height: 0;
-            overflow: hidden;
-            padding-top: 0;
-            padding-bottom: 0;
+            max-height: 0; overflow: hidden; padding-top: 0; padding-bottom: 0;
         }
-        #mini-player-bar.visible {
-            max-height: 100px; /* Altura suficiente para mostrar el contenido */
-            padding-top: 0.5rem;
-            padding-bottom: 0.5rem;
+        #mini-player-bar.visible { max-height: 100px; padding-top: 0.5rem; padding-bottom: 0.5rem; }
+
+        /* Estilos para el Ecualizador */
+        .knob-container { display: flex; flex-direction: column; align-items: center; }
+        .knob {
+            width: 50px; height: 50px; border-radius: 50%; background-color: var(--bg-tertiary);
+            position: relative; cursor: pointer; border: 2px solid var(--bg-interactive);
         }
+        .knob::after {
+            content: ''; position: absolute; width: 4px; height: 12px;
+            background-color: var(--accent-primary); top: 8px; left: 50%;
+            transform: translateX(-50%); border-radius: 2px;
+        }
+        .knob-label { font-size: 0.75rem; margin-top: 0.5rem; font-weight: 500; }
     </style>
 </head>
 <body>
@@ -85,12 +85,15 @@
     <div class="main-container">
         <main class="p-4">
             <div id="player-view" class="view active flex flex-col justify-between h-full space-y-4">
-                <div class="flex-shrink-0 text-right">
+                <div class="flex-shrink-0 flex justify-between items-center">
+                    <button id="eq-btn" class="p-2 hover-bg rounded-full z-10 inline-block">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M2 14h4M10 8h4M18 16h4"/></svg>
+                    </button>
                     <button id="settings-btn" class="p-2 hover-bg rounded-full z-10 inline-block"></button>
                 </div>
                 <div class="player-view-content flex-grow flex flex-col justify-center items-center space-y-4 p-4 rounded-lg">
                     <div class="relative aspect-square w-full max-w-xs rounded-xl shadow-lg overflow-hidden">
-                        <img id="album-art" src="https://placehold.co/400x400/1e293b/22c55e?text=M%C3%BAsica" alt="Carátula" class="w-full h-full object-cover">
+                        <img id="album-art" src="https://placehold.co/400x400/1e293b/f1f5f9" alt="Carátula" class="w-full h-full object-cover">
                         <canvas id="visualizer" class="absolute inset-0 w-full h-full opacity-60"></canvas>
                     </div>
                     <div class="text-center w-full px-4">
@@ -104,11 +107,11 @@
                         <div class="flex justify-between text-xs font-mono"><span id="current-time">0:00</span><span id="duration">0:00</span></div>
                     </div>
                     <div class="flex items-center justify-around">
-                        <button id="shuffle-btn" class="p-2"></button>
+                        <button id="shuffle-btn" class="p-2 control-btn"></button>
                         <button id="prev-btn" class="p-2"></button>
                         <button id="play-pause-btn" class="play-pause-btn w-16 h-16 flex items-center justify-center rounded-full shadow-lg"></button>
                         <button id="next-btn" class="p-2"></button>
-                        <button id="repeat-btn" class="p-2"></button>
+                        <button id="repeat-btn" class="p-2 control-btn"></button>
                     </div>
                     <div class="flex items-center justify-center space-x-2">
                         <svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3z"></path></svg>
@@ -139,7 +142,7 @@
 
         <div id="bottom-bar-wrapper">
             <div id="mini-player-bar" class="px-2 flex items-center space-x-3 cursor-pointer">
-                <img id="mini-album-art" src="https://placehold.co/96x96/1e293b/94a3b8?text=?" alt="Mini Carátula" class="w-12 h-12 rounded-md flex-shrink-0 object-cover">
+                <img id="mini-album-art" src="https://placehold.co/96x96/1e293b/f1f5f9" alt="Mini Carátula" class="w-12 h-12 rounded-md flex-shrink-0 object-cover">
                 <div class="flex-grow truncate">
                     <p id="mini-song-title" class="font-semibold text-primary truncate">Sin música</p>
                     <p id="mini-song-artist" class="text-sm truncate">Selecciona una canción</p>
@@ -189,38 +192,47 @@
             miniPlayerBar: document.getElementById('mini-player-bar'), miniAlbumArt: document.getElementById('mini-album-art'),
             miniSongTitle: document.getElementById('mini-song-title'), miniSongArtist: document.getElementById('mini-song-artist'),
             miniPlayPauseBtn: document.getElementById('mini-play-pause-btn'),
-            settingsBtn: document.getElementById('settings-btn'), addFilesBtn: document.getElementById('add-files-btn'),
-            clearQueueBtn: document.getElementById('clear-queue-btn'), libraryList: document.getElementById('library-list'),
-            playlistsView: document.getElementById('playlists-view'), queueList: document.getElementById('queue-list'),
-            fileInput: document.getElementById('file-input'), contextMenu: document.getElementById('context-menu'),
-            contextMenuBackdrop: document.getElementById('context-menu-backdrop'), modalContainer: document.getElementById('modal-container'),
-            songItemTemplate: document.getElementById('song-item-template'), visualizerCanvas: document.getElementById('visualizer'),
-            canvasCtx: document.getElementById('visualizer').getContext('2d'),
+            settingsBtn: document.getElementById('settings-btn'), eqBtn: document.getElementById('eq-btn'),
+            addFilesBtn: document.getElementById('add-files-btn'), clearQueueBtn: document.getElementById('clear-queue-btn'),
+            libraryList: document.getElementById('library-list'), playlistsView: document.getElementById('playlists-view'),
+            queueList: document.getElementById('queue-list'), fileInput: document.getElementById('file-input'),
+            contextMenu: document.getElementById('context-menu'), contextMenuBackdrop: document.getElementById('context-menu-backdrop'),
+            modalContainer: document.getElementById('modal-container'), songItemTemplate: document.getElementById('song-item-template'),
+            visualizerCanvas: document.getElementById('visualizer'), canvasCtx: document.getElementById('visualizer').getContext('2d'),
         };
 
         const audio1 = document.getElementById('audio1'); const audio2 = document.getElementById('audio2');
         let state = {
             library: [], playlists: [], queue: [], currentContext: { type: 'library', id: null }, contextQueue: [],
             contextIndex: -1, currentSongId: null, isPlaying: false, isShuffle: false, repeatMode: 'none', volume: 1,
-            settings: { theme: 'default', crossfadeEnabled: true, crossfadeDuration: 2 }
+            settings: { theme: 'default', crossfadeEnabled: true, crossfadeDuration: 2, eq: { bass: 0, mids: 0, treble: 0 } }
         };
-        let audioContext, analyser, sourceNode1, sourceNode2, masterGain, dataArray;
+        let audioContext, analyser, masterGain, dataArray, sourceNode1, sourceNode2, bassFilter, midsFilter, trebleFilter;
         
         function setupWebAudioAPI() {
             if (audioContext) return;
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = audioContext.createAnalyser(); masterGain = audioContext.createGain();
+                
+                bassFilter = audioContext.createBiquadFilter(); bassFilter.type = "lowshelf"; bassFilter.frequency.value = 250;
+                midsFilter = audioContext.createBiquadFilter(); midsFilter.type = "peaking"; midsFilter.frequency.value = 1000; midsFilter.Q.value = 1;
+                trebleFilter = audioContext.createBiquadFilter(); trebleFilter.type = "highshelf"; trebleFilter.frequency.value = 4000;
+
                 sourceNode1 = audioContext.createMediaElementSource(audio1); sourceNode2 = audioContext.createMediaElementSource(audio2);
-                sourceNode1.connect(masterGain); sourceNode2.connect(masterGain);
+                
+                sourceNode1.connect(bassFilter); sourceNode2.connect(bassFilter);
+                bassFilter.connect(midsFilter); midsFilter.connect(trebleFilter);
+                trebleFilter.connect(masterGain);
                 masterGain.connect(analyser); analyser.connect(audioContext.destination);
+
                 analyser.fftSize = 256; dataArray = new Uint8Array(analyser.frequencyBinCount);
+                applyEQ(); 
             } catch (e) { console.error("Web Audio API no soportada", e); }
         }
 
         const audioManager = (() => {
             let currentAudio = audio1; let standbyAudio = audio2; let fadeInterval = null;
-            function swapPlayers() { [currentAudio, standbyAudio] = [standbyAudio, currentAudio]; }
             function play(song, startTime = 0) {
                 if (!song) return; if (!audioContext) setupWebAudioAPI();
                 stopFade(); currentAudio.src = song.url; currentAudio.currentTime = startTime; currentAudio.volume = state.volume;
@@ -238,7 +250,7 @@
                         const newCurrentVolume = currentAudio.volume - volumeStep, newStandbyVolume = standbyAudio.volume + volumeStep;
                         if (newCurrentVolume >= 0) currentAudio.volume = newCurrentVolume;
                         if (newStandbyVolume <= state.volume) standbyAudio.volume = newStandbyVolume;
-                        if (newStandbyVolume >= state.volume) { stopFade(); currentAudio.pause(); swapPlayers(); currentAudio.volume = state.volume; preloadNext(); }
+                        if (newStandbyVolume >= state.volume) { stopFade(); currentAudio.pause(); [currentAudio, standbyAudio] = [standbyAudio, currentAudio]; currentAudio.volume = state.volume; preloadNext(); }
                     }, stepTime);
                 }).catch(() => { play(nextSong); });
             }
@@ -247,28 +259,32 @@
                 audio.addEventListener('timeupdate', () => { if (audio === currentAudio) updateProgressUI(audio.currentTime, audio.duration); });
                 audio.addEventListener('ended', () => { if (audio === currentAudio) handleTrackEnd(); });
             });
-            return { play, pause, resume, crossfadeTo, seek: (time) => currentAudio.currentTime = time, setVolume: (vol) => { currentAudio.volume = vol; } };
+            return { play, pause, resume, crossfadeTo, seek: (time) => currentAudio.currentTime = time, setVolume: (vol) => { masterGain.gain.value = vol; } };
         })();
         
         function getSongById(id) { return state.library.find(song => song.id === id); }
         function getNextSongInContext() {
-            let nextIndex = state.contextIndex;
             if (state.isShuffle) {
                 if (state.contextQueue.length <= 1) return null;
-                nextIndex = Math.floor(Math.random() * state.contextQueue.length);
-                if (state.contextQueue[nextIndex] === state.currentSongId) { nextIndex = (nextIndex + 1) % state.contextQueue.length; }
-            } else { nextIndex++; }
-            if (state.repeatMode === 'all' && nextIndex >= state.contextQueue.length) { nextIndex = 0; }
-            return getSongById(state.contextQueue[nextIndex]);
+                let randomIndex;
+                do { randomIndex = Math.floor(Math.random() * state.contextQueue.length); } while (state.contextQueue[randomIndex] === state.currentSongId);
+                return getSongById(state.contextQueue[randomIndex]);
+            } else {
+                let nextIndex = state.contextIndex + 1;
+                if (state.repeatMode === 'all' && nextIndex >= state.contextQueue.length) { nextIndex = 0; }
+                return getSongById(state.contextQueue[nextIndex]);
+            }
         }
         function playNextSong() {
-            let nextSongToPlay;
             if (state.repeatMode === 'one') { audioManager.play(getSongById(state.currentSongId), 0); return; }
+            let nextSongToPlay;
             if (state.queue.length > 0) { nextSongToPlay = getSongById(state.queue.shift()); renderQueue(); }
             else {
                 const nextSong = getNextSongInContext();
-                if (nextSong) { state.contextIndex = state.contextQueue.findIndex(id => id === nextSong.id); nextSongToPlay = nextSong; }
-                else { state.isPlaying = false; updateUIonPlayPause(); return; }
+                if (nextSong) {
+                    state.contextIndex = state.contextQueue.findIndex(id => id === nextSong.id);
+                    nextSongToPlay = nextSong;
+                } else { state.isPlaying = false; updateUIonPlayPause(); return; }
             }
             if (nextSongToPlay) {
                 state.currentSongId = nextSongToPlay.id; audioManager.crossfadeTo(nextSongToPlay);
@@ -285,17 +301,16 @@
             }
         }
         function handleTrackEnd() { if (state.isPlaying) playNextSong(); }
-
         function init() {
             loadState(); setupEventListeners(); setupSVGs(); applyTheme(); renderAll();
-            const lastSong = getSongById(state.currentSongId);
-            updatePlayerUI(lastSong);
-            updateMiniPlayerVisibility(); // <-- Llamada inicial para establecer el estado correcto
+            const lastSong = getSongById(state.currentSongId); updatePlayerUI(lastSong);
+            updateControlButtonsUI(); updateMiniPlayerVisibility(); 
         }
         function saveState() {
             const stateToSave = {
                 library: state.library.map(({url, ...rest}) => rest), playlists: state.playlists,
-                currentSongId: state.currentSongId, volume: state.volume, settings: state.settings
+                currentSongId: state.currentSongId, volume: state.volume, settings: state.settings,
+                isShuffle: state.isShuffle, repeatMode: state.repeatMode
             };
             localStorage.setItem('musicPlayerState', JSON.stringify(stateToSave));
         }
@@ -304,18 +319,16 @@
             if (savedState) {
                 const parsed = JSON.parse(savedState);
                 if (parsed.library) { parsed.library.forEach(song => { const blob = base64toBlob(song.data); song.url = URL.createObjectURL(blob); }); }
-                state = { ...state, ...parsed };
+                Object.assign(state, parsed);
             }
             setContext('library');
         }
-
         function renderAll() { renderLibrary(); renderPlaylists(); renderQueue(); updatePlayingStatusInLists(); }
         function createSongListItem(song) {
             const item = dom.songItemTemplate.content.cloneNode(true).querySelector('.list-item');
             item.dataset.songId = song.id;
-            item.querySelector('[data-title]').textContent = song.title;
-            item.querySelector('[data-artist]').textContent = song.artist;
-            item.querySelector('[data-art-src]').src = song.art || 'https://placehold.co/96x96/1e293b/94a3b8?text=?';
+            item.querySelector('[data-title]').textContent = song.title; item.querySelector('[data-artist]').textContent = song.artist;
+            item.querySelector('[data-art-src]').src = song.art || 'https://placehold.co/96x96/1e293b/f1f5f9';
             item.addEventListener('click', () => {
                 const contextList = item.closest('ul');
                 if (contextList && contextList.dataset.context === 'playlist') { playSongFromContext(song.id, 'playlist', contextList.dataset.playlistId); }
@@ -341,21 +354,16 @@
             if (state.queue.length === 0) { dom.queueList.innerHTML = `<li class="text-center text-secondary p-8">La cola está vacía.</li>`; return; }
             state.queue.forEach(songId => { const song = getSongById(songId); if (song) dom.queueList.appendChild(createSongListItem(song)); });
         }
-        function updatePlayingStatusInLists() {
-            document.querySelectorAll('.list-item').forEach(item => {
-                item.classList.toggle('playing', item.dataset.songId === state.currentSongId);
-            });
-        }
+        function updatePlayingStatusInLists() { document.querySelectorAll('.list-item').forEach(item => item.classList.toggle('playing', item.dataset.songId === state.currentSongId)); }
         function updatePlayerUI(song) {
+            const defaultArt = 'https://placehold.co/400x400/1e293b/f1f5f9';
             if (!song) {
-                dom.songTitle.textContent = 'Bienvenido'; dom.songArtist.textContent = 'Carga tu música';
-                dom.albumArt.src = 'https://placehold.co/400x400/1e293b/22c55e?text=M%C3%BAsica';
+                dom.songTitle.textContent = 'Bienvenido'; dom.songArtist.textContent = 'Carga tu música'; dom.albumArt.src = defaultArt;
                 updateMiniPlayerVisibility(); return;
             }
             dom.songTitle.textContent = song.title; dom.songArtist.textContent = song.artist;
-            dom.albumArt.src = song.art || 'https://placehold.co/400x400/1e293b/22c55e?text=M%C3%BAsica';
-            dom.miniSongTitle.textContent = song.title; dom.miniSongArtist.textContent = song.artist;
-            dom.miniAlbumArt.src = song.art || 'https://placehold.co/96x96/1e293b/94a3b8?text=?';
+            dom.albumArt.src = song.art || defaultArt; dom.miniSongTitle.textContent = song.title;
+            dom.miniSongArtist.textContent = song.artist; dom.miniAlbumArt.src = song.art || 'https://placehold.co/96x96/1e293b/f1f5f9';
             updateMiniPlayerVisibility();
         }
         function updateProgressUI(currentTime, duration) {
@@ -371,49 +379,39 @@
         }
         function togglePlayPause() {
             if (audioContext && audioContext.state === 'suspended') { audioContext.resume(); }
-            if (state.isPlaying) audioManager.pause();
-            else if (state.currentSongId) audioManager.resume();
+            if (state.isPlaying) audioManager.pause(); else if (state.currentSongId) audioManager.resume();
             else if (state.library.length > 0) playSongFromContext(state.library[0].id, 'library');
         }
-
         function setupEventListeners() {
             dom.tabs.forEach(tab => tab.addEventListener('click', () => switchView(tab.dataset.view)));
             dom.playPauseBtn.addEventListener('click', togglePlayPause);
             dom.miniPlayPauseBtn.addEventListener('click', (e) => { e.stopPropagation(); togglePlayPause(); });
             dom.miniPlayerBar.addEventListener('click', () => switchView('player-view'));
             dom.nextBtn.addEventListener('click', playNextSong); dom.prevBtn.addEventListener('click', playPrevSong);
+            dom.shuffleBtn.addEventListener('click', toggleShuffle); dom.repeatBtn.addEventListener('click', cycleRepeatMode);
             dom.progressBar.addEventListener('input', (e) => audioManager.seek((e.target.value / 100) * (audio1.duration || audio2.duration || 0)));
-            dom.volumeSlider.addEventListener('input', (e) => { state.volume = e.target.value; audioManager.setVolume(state.volume); });
+            dom.volumeSlider.addEventListener('input', (e) => { state.volume = parseFloat(e.target.value); audioManager.setVolume(state.volume); });
             dom.volumeSlider.addEventListener('change', saveState);
             dom.addFilesBtn.addEventListener('click', () => dom.fileInput.click());
             dom.fileInput.addEventListener('change', handleFileSelect);
             dom.clearQueueBtn.addEventListener('click', () => { state.queue = []; renderQueue(); saveState(); });
-            dom.settingsBtn.addEventListener('click', openSettingsModal);
+            dom.settingsBtn.addEventListener('click', openSettingsModal); dom.eqBtn.addEventListener('click', openEQModal);
             dom.contextMenuBackdrop.addEventListener('click', hideContextMenu);
         }
-
         function getActiveViewId() { return document.querySelector('.view.active')?.id; }
-
         function updateMiniPlayerVisibility() {
             const activeView = getActiveViewId();
-            if (activeView !== 'player-view' && state.currentSongId) {
-                dom.miniPlayerBar.classList.add('visible');
-            } else {
-                dom.miniPlayerBar.classList.remove('visible');
-            }
+            dom.miniPlayerBar.classList.toggle('visible', activeView !== 'player-view' && !!state.currentSongId);
         }
-        
         function switchView(viewId) {
             dom.views.forEach(view => view.classList.toggle('active', view.id === viewId));
             dom.tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.view === viewId));
-            updateMiniPlayerVisibility(); // <-- Lógica de visibilidad centralizada aquí
+            updateMiniPlayerVisibility();
         }
-
         async function handleFileSelect(event) {
             const files = Array.from(event.target.files); if (files.length === 0) return;
-            const wasEmpty = state.library.length === 0;
-            const newSongs = await Promise.all(files.map(processFile));
-            state.library.push(...newSongs);
+            const wasEmpty = !state.currentSongId && state.library.length === 0;
+            const newSongs = await Promise.all(files.map(processFile)); state.library.push(...newSongs);
             renderLibrary(); setContext('library'); saveState();
             if (wasEmpty && newSongs.length > 0) playSongFromContext(newSongs[0].id, 'library');
         }
@@ -425,41 +423,27 @@
                     window.jsmediatags.read(file, {
                         onSuccess: (tag) => {
                             const { title, artist, album, picture } = tag.tags;
-                            resolve({
-                                id: self.crypto.randomUUID(), title: title || file.name.replace(/\.[^/.]+$/, ""), artist: artist || 'Desconocido', album: album || 'Desconocido',
-                                art: picture ? `data:${picture.format};base64,${window.btoa(picture.data.reduce((acc, byte) => acc + String.fromCharCode(byte), ''))}` : null,
-                                data: base64String, url: URL.createObjectURL(blob)
-                            });
-                        },
-                        onError: () => resolve({
-                            id: self.crypto.randomUUID(), title: file.name.replace(/\.[^/.]+$/, ""), artist: 'Desconocido', album: 'Desconocido', art: null,
-                            data: base64String, url: URL.createObjectURL(blob)
-                        })
+                            resolve({ id: self.crypto.randomUUID(), title: title || file.name.replace(/\.[^/.]+$/, ""), artist: artist || 'Desconocido', album: album || 'Desconocido', art: picture ? `data:${picture.format};base64,${window.btoa(picture.data.reduce((acc, byte) => acc + String.fromCharCode(byte), ''))}` : null, data: base64String, url: URL.createObjectURL(blob) });
+                        }, onError: () => resolve({ id: self.crypto.randomUUID(), title: file.name.replace(/\.[^/.]+$/, ""), artist: 'Desconocido', album: 'Desconocido', art: null, data: base64String, url: URL.createObjectURL(blob) })
                     });
-                };
-                reader.readAsArrayBuffer(file);
+                }; reader.readAsArrayBuffer(file);
             });
         }
         function setContext(type, id = null) {
             state.currentContext = { type, id };
             if (type === 'library') state.contextQueue = state.library.map(s => s.id);
             else if (type === 'playlist') {
-                const playlist = state.playlists.find(p => p.id === id);
-                if (playlist) state.contextQueue = playlist.songIds;
+                const playlist = state.playlists.find(p => p.id === id); if (playlist) state.contextQueue = playlist.songIds;
             } else { state.contextQueue = []; }
         }
         function playSongFromContext(songId, contextType, contextId = null) {
             if (state.currentContext.type !== contextType || state.currentContext.id !== contextId) { setContext(contextType, contextId); }
-            state.contextIndex = state.contextQueue.findIndex(id => id === songId);
-            state.currentSongId = songId; const song = getSongById(songId);
-            if (song) {
-                audioManager.play(song);
-                updatePlayerUI(song); updateMediaSession(song); updatePlayingStatusInLists(); saveState();
-            }
+            state.contextIndex = state.contextQueue.findIndex(id => id === songId); state.currentSongId = songId;
+            const song = getSongById(songId);
+            if (song) { audioManager.play(song); updatePlayerUI(song); updateMediaSession(song); updatePlayingStatusInLists(); saveState(); }
         }
         function renderPlaylists(playlistId = null) {
-            dom.playlistsView.innerHTML = '';
-            dom.playlistsView.classList.add('pb-40'); 
+            dom.playlistsView.innerHTML = ''; dom.playlistsView.classList.add('pb-40'); 
             if (playlistId) { renderPlaylistDetail(playlistId); } else { renderPlaylistList(); }
         }
         function renderPlaylistList() {
@@ -468,8 +452,7 @@
             if (state.playlists.length === 0) { list.innerHTML = `<li class="text-center text-secondary p-8">No has creado ninguna playlist.</li>`; }
             else {
                 state.playlists.forEach(p => {
-                    const li = document.createElement('li');
-                    li.className = 'list-item flex items-center p-3 rounded-lg cursor-pointer space-x-4';
+                    const li = document.createElement('li'); li.className = 'list-item flex items-center p-3 rounded-lg cursor-pointer space-x-4';
                     li.innerHTML = `<div class="w-12 h-12 rounded-md bg-tertiary flex items-center justify-center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div><div class="flex-grow truncate"><p class="font-semibold text-primary truncate">${p.name}</p><p class="text-sm">${p.songIds.length} canciones</p></div><button data-playlist-id="${p.id}" class="playlist-options-btn p-2 rounded-full hover-bg flex-shrink-0"><svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M12 16a2 2 0 0 1 2 2a2 2 0 0 1-2 2a2 2 0 0 1-2-2a2 2 0 0 1 2-2m0-6a2 2 0 0 1 2 2a2 2 0 0 1-2 2a2 2 0 0 1-2-2a2 2 0 0 1 2-2m0-6a2 2 0 0 1 2 2a2 2 0 0 1-2 2a2 2 0 0 1-2-2a2 2 0 0 1 2-2z"/></svg></button>`;
                     li.addEventListener('click', () => renderPlaylists(p.id)); list.appendChild(li);
                 });
@@ -493,108 +476,82 @@
             document.getElementById('back-to-playlists-btn').addEventListener('click', () => renderPlaylists());
             updatePlayingStatusInLists();
         }
-        function createPlaylist() {
-            showPromptModal("Nueva Playlist", "Nombre de la playlist", (name) => {
-                if (name && name.trim()) { state.playlists.push({ id: self.crypto.randomUUID(), name: name.trim(), songIds: [] }); saveState(); renderPlaylists(); }
-            });
-        }
-        function renamePlaylist(playlistId) {
-            const playlist = state.playlists.find(p => p.id === playlistId); if (!playlist) return;
-            showPromptModal("Renombrar Playlist", "Nuevo nombre", (newName) => {
-                if (newName && newName.trim()) { playlist.name = newName.trim(); saveState(); renderPlaylists(); }
-            }, playlist.name);
-        }
-        function deletePlaylist(playlistId) {
-            const playlist = state.playlists.find(p => p.id === playlistId); if (!playlist) return;
-            showConfirmModal(`¿Eliminar "${playlist.name}"?`, "Esta acción no se puede deshacer.", () => {
-                state.playlists = state.playlists.filter(p => p.id !== playlistId); saveState(); renderPlaylists();
-            });
-        }
-        function addSongToPlaylist(songId, playlistId) {
-            const playlist = state.playlists.find(p => p.id === playlistId);
-            if (playlist && !playlist.songIds.includes(songId)) { playlist.songIds.push(songId); saveState(); }
-        }
-        function showModal(content) {
-            dom.modalContainer.innerHTML = `<div class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-70 opacity-0 transition-opacity"><div class="modal-content w-full max-w-sm rounded-xl shadow-2xl p-6 space-y-4">${content}</div></div>`;
-            dom.modalContainer.classList.remove('hidden');
-            const backdrop = dom.modalContainer.querySelector('.modal-backdrop');
-            setTimeout(() => backdrop.classList.remove('opacity-0'), 10); return backdrop;
-        }
-        function closeModal() {
-            const backdrop = dom.modalContainer.querySelector('.modal-backdrop');
-            if (backdrop) {
-                backdrop.classList.add('opacity-0');
-                setTimeout(() => { dom.modalContainer.classList.add('hidden'); dom.modalContainer.innerHTML = ''; }, 300);
-            }
-        }
-        function openAddToPlaylistModal(songId) {
-            let playlistItems = state.playlists.length > 0 ? state.playlists.map(p => `<li class="list-item p-3 rounded-lg cursor-pointer" data-id="${p.id}">${p.name}</li>`).join('') : `<li class="text-center text-secondary p-4">No hay playlists.</li>`;
-            const modalContent = `<h2 class="text-xl font-bold text-primary">Añadir a...</h2><ul class="max-h-60 overflow-y-auto space-y-1">${playlistItems}</ul><button id="close-modal-btn" class="mt-4 w-full bg-tertiary text-primary py-2 rounded-lg hover-bg">Cerrar</button>`;
-            const modal = showModal(modalContent);
-            modal.querySelectorAll('.list-item').forEach(item => { item.addEventListener('click', () => { addSongToPlaylist(songId, item.dataset.id); closeModal(); }); });
-            modal.querySelector('#close-modal-btn').addEventListener('click', closeModal);
-            modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
-        }
-        function showPromptModal(title, label, callback, defaultValue = '') {
-            const modalContent = `<h2 class="text-xl font-bold text-primary">${title}</h2><label for="prompt-input" class="text-sm">${label}</label><input id="prompt-input" type="text" value="${defaultValue}" class="w-full p-2 rounded bg-tertiary text-primary border border-interactive focus:outline-none focus:ring-2 focus:ring-accent-primary"><div class="flex justify-end space-x-2 mt-4"><button id="prompt-cancel" class="bg-tertiary px-4 py-2 rounded-lg">Cancelar</button><button id="prompt-ok" class="action-btn px-4 py-2 rounded-lg">Aceptar</button></div>`;
-            const modal = showModal(modalContent);
-            const input = modal.querySelector('#prompt-input'); input.focus(); input.select();
-            const handleOk = () => { callback(input.value); closeModal(); };
-            modal.querySelector('#prompt-ok').addEventListener('click', handleOk);
-            input.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleOk(); });
-            modal.querySelector('#prompt-cancel').addEventListener('click', closeModal);
-            modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
-        }
-        function showConfirmModal(title, message, onConfirm) {
-            const modalContent = `<h2 class="text-xl font-bold text-primary">${title}</h2><p class="text-sm">${message}</p><div class="flex justify-end space-x-2 mt-4"><button id="confirm-cancel" class="bg-tertiary px-4 py-2 rounded-lg">Cancelar</button><button id="confirm-ok" class="bg-red-600 text-white px-4 py-2 rounded-lg">Confirmar</button></div>`;
-            const modal = showModal(modalContent);
-            modal.querySelector('#confirm-ok').addEventListener('click', () => { onConfirm(); closeModal(); });
-            modal.querySelector('#confirm-cancel').addEventListener('click', closeModal);
-            modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
-        }
-        function showContextMenu(x, y, items) {
-            dom.contextMenu.innerHTML = '';
-            items.forEach(item => {
-                const li = document.createElement('li'); li.textContent = item.label; li.className = 'px-4 py-2 hover-bg rounded cursor-pointer';
-                li.addEventListener('click', () => { item.action(); hideContextMenu(); }); dom.contextMenu.appendChild(li);
-            });
-            const menuWidth = dom.contextMenu.offsetWidth; const menuHeight = dom.contextMenu.offsetHeight;
-            const correctedX = (x + menuWidth > window.innerWidth) ? window.innerWidth - menuWidth - 10 : x;
-            const correctedY = (y + menuHeight > window.innerHeight) ? window.innerHeight - menuHeight - 10 : y;
-            dom.contextMenu.style.left = `${correctedX}px`; dom.contextMenu.style.top = `${correctedY}px`;
-            dom.contextMenu.classList.remove('hidden'); dom.contextMenuBackdrop.classList.remove('hidden');
-        }
+        function createPlaylist() { showPromptModal("Nueva Playlist", "Nombre de la playlist", (name) => { if (name && name.trim()) { state.playlists.push({ id: self.crypto.randomUUID(), name: name.trim(), songIds: [] }); saveState(); renderPlaylists(); } }); }
+        function renamePlaylist(playlistId) { const playlist = state.playlists.find(p => p.id === playlistId); if (!playlist) return; showPromptModal("Renombrar Playlist", "Nuevo nombre", (newName) => { if (newName && newName.trim()) { playlist.name = newName.trim(); saveState(); renderPlaylists(); } }, playlist.name); }
+        function deletePlaylist(playlistId) { const playlist = state.playlists.find(p => p.id === playlistId); if (!playlist) return; showConfirmModal(`¿Eliminar "${playlist.name}"?`, "Esta acción no se puede deshacer.", () => { state.playlists = state.playlists.filter(p => p.id !== playlistId); saveState(); renderPlaylists(); }); }
+        function addSongToPlaylist(songId, playlistId) { const playlist = state.playlists.find(p => p.id === playlistId); if (playlist && !playlist.songIds.includes(songId)) { playlist.songIds.push(songId); saveState(); } }
+        function showModal(content) { dom.modalContainer.innerHTML = `<div class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-70 opacity-0 transition-opacity"><div class="modal-content w-full max-w-sm rounded-xl shadow-2xl p-6 space-y-4">${content}</div></div>`; dom.modalContainer.classList.remove('hidden'); const backdrop = dom.modalContainer.querySelector('.modal-backdrop'); setTimeout(() => backdrop.classList.remove('opacity-0'), 10); return backdrop; }
+        function closeModal() { const backdrop = dom.modalContainer.querySelector('.modal-backdrop'); if (backdrop) { backdrop.classList.add('opacity-0'); setTimeout(() => { dom.modalContainer.classList.add('hidden'); dom.modalContainer.innerHTML = ''; }, 300); } }
+        function openAddToPlaylistModal(songId) { let playlistItems = state.playlists.length > 0 ? state.playlists.map(p => `<li class="list-item p-3 rounded-lg cursor-pointer" data-id="${p.id}">${p.name}</li>`).join('') : `<li class="text-center text-secondary p-4">No hay playlists.</li>`; const modalContent = `<h2 class="text-xl font-bold text-primary">Añadir a...</h2><ul class="max-h-60 overflow-y-auto space-y-1">${playlistItems}</ul><button id="close-modal-btn" class="mt-4 w-full bg-tertiary text-primary py-2 rounded-lg hover-bg">Cerrar</button>`; const modal = showModal(modalContent); modal.querySelectorAll('.list-item').forEach(item => { item.addEventListener('click', () => { addSongToPlaylist(songId, item.dataset.id); closeModal(); }); }); modal.querySelector('#close-modal-btn').addEventListener('click', closeModal); modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); }); }
+        function showPromptModal(title, label, callback, defaultValue = '') { const modalContent = `<h2 class="text-xl font-bold text-primary">${title}</h2><label for="prompt-input" class="text-sm">${label}</label><input id="prompt-input" type="text" value="${defaultValue}" class="w-full p-2 rounded bg-tertiary text-primary border border-interactive focus:outline-none focus:ring-2 focus:ring-accent-primary"><div class="flex justify-end space-x-2 mt-4"><button id="prompt-cancel" class="bg-tertiary px-4 py-2 rounded-lg">Cancelar</button><button id="prompt-ok" class="action-btn px-4 py-2 rounded-lg">Aceptar</button></div>`; const modal = showModal(modalContent); const input = modal.querySelector('#prompt-input'); input.focus(); input.select(); const handleOk = () => { callback(input.value); closeModal(); }; modal.querySelector('#prompt-ok').addEventListener('click', handleOk); input.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleOk(); }); modal.querySelector('#prompt-cancel').addEventListener('click', closeModal); modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); }); }
+        function showConfirmModal(title, message, onConfirm) { const modalContent = `<h2 class="text-xl font-bold text-primary">${title}</h2><p class="text-sm">${message}</p><div class="flex justify-end space-x-2 mt-4"><button id="confirm-cancel" class="bg-tertiary px-4 py-2 rounded-lg">Cancelar</button><button id="confirm-ok" class="bg-red-600 text-white px-4 py-2 rounded-lg">Confirmar</button></div>`; const modal = showModal(modalContent); modal.querySelector('#confirm-ok').addEventListener('click', () => { onConfirm(); closeModal(); }); modal.querySelector('#confirm-cancel').addEventListener('click', closeModal); modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); }); }
+        function showContextMenu(x, y, items) { dom.contextMenu.innerHTML = ''; items.forEach(item => { const li = document.createElement('li'); li.textContent = item.label; li.className = 'px-4 py-2 hover-bg rounded cursor-pointer'; li.addEventListener('click', () => { item.action(); hideContextMenu(); }); dom.contextMenu.appendChild(li); }); const menuWidth = dom.contextMenu.offsetWidth; const menuHeight = dom.contextMenu.offsetHeight; const correctedX = (x + menuWidth > window.innerWidth) ? window.innerWidth - menuWidth - 10 : x; const correctedY = (y + menuHeight > window.innerHeight) ? window.innerHeight - menuHeight - 10 : y; dom.contextMenu.style.left = `${correctedX}px`; dom.contextMenu.style.top = `${correctedY}px`; dom.contextMenu.classList.remove('hidden'); dom.contextMenuBackdrop.classList.remove('hidden'); }
         function hideContextMenu() { dom.contextMenu.classList.add('hidden'); dom.contextMenuBackdrop.classList.add('hidden'); }
-        function openSettingsModal() {
-            const modalContent = `<div class="flex justify-between items-center mb-2"><h2 class="text-2xl font-bold">Configuración</h2><button id="close-settings-btn" class="p-2 rounded-full hover-bg text-2xl leading-none">&times;</button></div><div class="accordion-item"><button class="accordion-header"><span>Transiciones</span><span class="accordion-icon">▼</span></button><div class="accordion-content"><div class="flex items-center justify-between py-2"><label for="crossfade-toggle" class="text-sm">Crossfade</label><div class="flex items-center space-x-3"><span id="crossfade-duration-label" class="text-xs w-12 text-center"></span><input type="range" id="crossfade-duration-slider" min="1" max="10" class="w-24"><input type="checkbox" id="crossfade-toggle" class="form-checkbox h-5 w-5 rounded bg-slate-700 border-slate-600 text-accent-primary focus:ring-accent-primary"></div></div></div></div><div class="accordion-item"><button class="accordion-header"><span>Temas</span><span class="accordion-icon">▼</span></button><div class="accordion-content"><div id="theme-selector" class="flex items-center space-x-4 py-2"><button data-theme="default" class="theme-btn w-8 h-8 rounded-full bg-[#0f172a] border-2 border-slate-500"></button><button data-theme="sunset" class="theme-btn w-8 h-8 rounded-full bg-[#4c1d95] border-2 border-slate-500"></button><button data-theme="ocean" class="theme-btn w-8 h-8 rounded-full bg-[#0c4a6e] border-2 border-slate-500"></button></div></div></div>`;
-            const modal = showModal(modalContent);
-            modal.querySelector('#close-settings-btn').addEventListener('click', closeModal); modal.addEventListener('click', (e) => { if(e.target === modal) closeModal(); });
-            const crossfadeToggle = modal.querySelector('#crossfade-toggle'); const crossfadeSlider = modal.querySelector('#crossfade-duration-slider');
-            const crossfadeLabel = modal.querySelector('#crossfade-duration-label');
-            crossfadeToggle.checked = state.settings.crossfadeEnabled; crossfadeSlider.value = state.settings.crossfadeDuration;
-            crossfadeLabel.textContent = `${state.settings.crossfadeDuration}s`;
-            crossfadeToggle.addEventListener('change', (e) => { state.settings.crossfadeEnabled = e.target.checked; saveState(); });
-            crossfadeSlider.addEventListener('input', (e) => { state.settings.crossfadeDuration = parseInt(e.target.value); crossfadeLabel.textContent = `${state.settings.crossfadeDuration}s`; });
-            crossfadeSlider.addEventListener('change', saveState);
-            modal.querySelectorAll('.theme-btn').forEach(btn => btn.addEventListener('click', (e) => { state.settings.theme = e.currentTarget.dataset.theme; applyTheme(); saveState(); }));
-            modal.querySelectorAll('.accordion-header').forEach(header => header.addEventListener('click', () => { header.classList.toggle('active'); header.nextElementSibling.classList.toggle('open'); }));
-        }
+        function openSettingsModal() { const modalContent = `<div class="flex justify-between items-center mb-2"><h2 class="text-2xl font-bold">Configuración</h2><button id="close-settings-btn" class="p-2 rounded-full hover-bg text-2xl leading-none">&times;</button></div><div class="accordion-item"><button class="accordion-header"><span>Transiciones</span><span class="accordion-icon">▼</span></button><div class="accordion-content"><div class="flex items-center justify-between py-2"><label for="crossfade-toggle" class="text-sm">Crossfade</label><div class="flex items-center space-x-3"><span id="crossfade-duration-label" class="text-xs w-12 text-center"></span><input type="range" id="crossfade-duration-slider" min="1" max="10" class="w-24"><input type="checkbox" id="crossfade-toggle" class="form-checkbox h-5 w-5 rounded bg-slate-700 border-slate-600 text-accent-primary focus:ring-accent-primary"></div></div></div></div><div class="accordion-item"><button class="accordion-header"><span>Temas</span><span class="accordion-icon">▼</span></button><div class="accordion-content"><div id="theme-selector" class="flex items-center space-x-4 py-2"><button data-theme="default" class="theme-btn w-8 h-8 rounded-full bg-[#0f172a] border-2 border-slate-500"></button><button data-theme="sunset" class="theme-btn w-8 h-8 rounded-full bg-[#4c1d95] border-2 border-slate-500"></button><button data-theme="ocean" class="theme-btn w-8 h-8 rounded-full bg-[#0c4a6e] border-2 border-slate-500"></button></div></div></div>`; const modal = showModal(modalContent); modal.querySelector('#close-settings-btn').addEventListener('click', closeModal); modal.addEventListener('click', (e) => { if(e.target === modal) closeModal(); }); const crossfadeToggle = modal.querySelector('#crossfade-toggle'); const crossfadeSlider = modal.querySelector('#crossfade-duration-slider'); const crossfadeLabel = modal.querySelector('#crossfade-duration-label'); crossfadeToggle.checked = state.settings.crossfadeEnabled; crossfadeSlider.value = state.settings.crossfadeDuration; crossfadeLabel.textContent = `${state.settings.crossfadeDuration}s`; crossfadeToggle.addEventListener('change', (e) => { state.settings.crossfadeEnabled = e.target.checked; saveState(); }); crossfadeSlider.addEventListener('input', (e) => { state.settings.crossfadeDuration = parseInt(e.target.value); crossfadeLabel.textContent = `${state.settings.crossfadeDuration}s`; }); crossfadeSlider.addEventListener('change', saveState); modal.querySelectorAll('.theme-btn').forEach(btn => btn.addEventListener('click', (e) => { state.settings.theme = e.currentTarget.dataset.theme; applyTheme(); saveState(); })); modal.querySelectorAll('.accordion-header').forEach(header => header.addEventListener('click', () => { header.classList.toggle('active'); header.nextElementSibling.classList.toggle('open'); })); }
         function applyTheme(){ dom.body.className = `theme-${state.settings.theme || 'default'}`; }
-        function drawVisualizer() {
-            if (!state.isPlaying || !analyser) { dom.canvasCtx.clearRect(0, 0, dom.visualizerCanvas.width, dom.visualizerCanvas.height); return; }
-            requestAnimationFrame(drawVisualizer); analyser.getByteFrequencyData(dataArray);
-            dom.canvasCtx.fillStyle = 'rgba(0, 0, 0, 0.1)'; dom.canvasCtx.fillRect(0, 0, dom.visualizerCanvas.width, dom.visualizerCanvas.height);
-            const barWidth = (dom.visualizerCanvas.width / dataArray.length) * 2.5; let x = 0;
-            for (let i = 0; i < dataArray.length; i++) {
-                const barHeight = dataArray[i] / 2;
-                dom.canvasCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent-primary') + '99';
-                dom.canvasCtx.fillRect(x, dom.visualizerCanvas.height - barHeight, barWidth, barHeight); x += barWidth + 1;
-            }
-        }
+        function drawVisualizer() { if (!state.isPlaying || !analyser) { dom.canvasCtx.clearRect(0, 0, dom.visualizerCanvas.width, dom.visualizerCanvas.height); return; } requestAnimationFrame(drawVisualizer); analyser.getByteFrequencyData(dataArray); dom.canvasCtx.fillStyle = 'rgba(0, 0, 0, 0.1)'; dom.canvasCtx.fillRect(0, 0, dom.visualizerCanvas.width, dom.visualizerCanvas.height); const barWidth = (dom.visualizerCanvas.width / dataArray.length) * 2.5; let x = 0; for (let i = 0; i < dataArray.length; i++) { const barHeight = dataArray[i] / 2; dom.canvasCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent-primary') + '99'; dom.canvasCtx.fillRect(x, dom.visualizerCanvas.height - barHeight, barWidth, barHeight); x += barWidth + 1; } }
         function formatTime(s) { const m=Math.floor(s/60),c=Math.floor(s%60); return isNaN(m)?'0:00':`${m}:${c<10?'0':''}${c}`; }
         function arrayBufferToBase64(b) { let s='';new Uint8Array(b).forEach(v=>s+=String.fromCharCode(v));return window.btoa(s); }
         function base64toBlob(b) { try { const s=atob(b),a=[];for(let i=0;i<s.length;i+=512)a.push(new Uint8Array([...s.slice(i,i+512)].map(c=>c.charCodeAt(0))));return new Blob(a,{type:'audio/mpeg'});}catch(e){return new Blob([]);}}
         function updateMediaSession(s) { if(!('mediaSession'in navigator))return;navigator.mediaSession.metadata=new MediaMetadata({title:s.title,artist:s.artist,album:s.album,artwork:[{src:s.art||''}]});navigator.mediaSession.setActionHandler('play',togglePlayPause);navigator.mediaSession.setActionHandler('pause',togglePlayPause);navigator.mediaSession.setActionHandler('nexttrack',playNextSong);navigator.mediaSession.setActionHandler('previoustrack',playPrevSong);}
+        function toggleShuffle() { state.isShuffle = !state.isShuffle; updateControlButtonsUI(); saveState(); }
+        function cycleRepeatMode() { const modes = ['none', 'all', 'one']; state.repeatMode = modes[(modes.indexOf(state.repeatMode) + 1) % modes.length]; updateControlButtonsUI(); saveState(); }
+        function updateControlButtonsUI() {
+            dom.shuffleBtn.classList.toggle('active', state.isShuffle);
+            dom.repeatBtn.classList.remove('active');
+            dom.repeatBtn.style.color = state.repeatMode !== 'none' ? 'var(--accent-primary)' : 'currentColor';
+            const repeatIcon = dom.repeatBtn.querySelector('svg');
+            if (state.repeatMode === 'one') { repeatIcon.innerHTML = '<polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path><path d="M11 5h2m-1-2v2m-1 2V5"></path>'; }
+            else { repeatIcon.innerHTML = '<polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path>'; }
+        }
+        function openEQModal() {
+            const modalContent = `
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">Ecualizador</h2>
+                    <button id="close-eq-btn" class="p-2 rounded-full hover-bg text-2xl leading-none">&times;</button>
+                </div>
+                <div class="flex justify-around items-center p-4">
+                    ${['bass', 'mids', 'treble'].map(type => `
+                        <div class="knob-container">
+                            <div class="knob" data-type="${type}" style="transform: rotate(${state.settings.eq[type] * 2.7}deg)"></div>
+                            <span class="knob-label">${type.charAt(0).toUpperCase() + type.slice(1)}</span>
+                        </div>
+                    `).join('')}
+                </div>`;
+            const modal = showModal(modalContent);
+            modal.querySelector('#close-eq-btn').addEventListener('click', closeModal);
+            modal.querySelectorAll('.knob').forEach(knob => {
+                let isDragging = false;
+                const knobType = knob.dataset.type;
+                knob.addEventListener('mousedown', () => isDragging = true);
+                window.addEventListener('mouseup', () => isDragging = false);
+                window.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    const rect = knob.getBoundingClientRect();
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+                    const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI) + 90;
+                    let rotation = Math.round(angle);
+                    if (rotation < 0) rotation += 360;
+                    if (rotation > 270) rotation = 0; if (rotation > 135) rotation = 135;
+                    
+                    const value = (rotation / 135) * 40 - 20; // de -20dB a +20dB
+                    state.settings.eq[knobType] = value;
+                    knob.style.transform = `rotate(${rotation}deg)`;
+                    applyEQ();
+                });
+                knob.addEventListener('dblclick', () => { // Double click to reset
+                    knob.style.transform = 'rotate(0deg)'; state.settings.eq[knobType] = 0; applyEQ(); saveState();
+                });
+            });
+            window.addEventListener('mouseup', saveState, { once: true });
+        }
+        function applyEQ() {
+            if (!audioContext) return;
+            bassFilter.gain.value = state.settings.eq.bass;
+            midsFilter.gain.value = state.settings.eq.mids;
+            trebleFilter.gain.value = state.settings.eq.treble;
+        }
         function setupSVGs(){
             const icons = {
                 'settings-btn': `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`,
@@ -605,13 +562,8 @@
                 'shuffle-btn': '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>',
                 'repeat-btn': '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>'
             };
-            for (const [id, svg] of Object.entries(icons)) { document.getElementById(id).innerHTML = svg; }
-            const tabsData = [
-                { id: "player-view", svg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><span>Reproductor</span>` },
-                { id: "library-view", svg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15V6M18.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM12 12H3M16 6H3M12 18H3"/></svg><span>Biblioteca</span>` },
-                { id: "playlists-view", svg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Playlists</span>` },
-                { id: "queue-view", svg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg><span>Cola</span>` }
-            ];
+            for (const [id, svg] of Object.entries(icons)) { if(document.getElementById(id)) document.getElementById(id).innerHTML = svg; }
+            const tabsData = [ { id: "player-view", svg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><span>Reproductor</span>` }, { id: "library-view", svg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15V6M18.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM12 12H3M16 6H3M12 18H3"/></svg><span>Biblioteca</span>` }, { id: "playlists-view", svg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Playlists</span>` }, { id: "queue-view", svg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg><span>Cola</span>` } ];
             dom.tabs.forEach((tab, index) => { tab.innerHTML = tabsData[index].svg; });
         }
         init();
