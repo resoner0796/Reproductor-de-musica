@@ -65,13 +65,18 @@
         .accordion-icon { transition: transform 0.3s; }
         .accordion-header.active .accordion-icon { transform: rotate(180deg); }
 
+        #bottom-bar-wrapper { flex-shrink: 0; }
         #mini-player-bar {
-            flex-shrink: 0;
-            transition: transform 0.3s ease-in-out;
-            transform: translateY(100%);
+            transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out;
+            max-height: 0;
+            overflow: hidden;
+            padding-top: 0;
+            padding-bottom: 0;
         }
         #mini-player-bar.visible {
-            transform: translateY(0);
+            max-height: 100px; /* Altura suficiente para mostrar el contenido */
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
         }
     </style>
 </head>
@@ -118,35 +123,36 @@
                     <h1 class="text-2xl font-bold">Mi Biblioteca</h1>
                     <button id="add-files-btn" class="action-btn px-4 py-2 rounded-lg text-sm font-bold">Añadir</button>
                 </div>
-                <ul id="library-list" class="space-y-1 pb-20"></ul> </div>
+                <ul id="library-list" class="space-y-1 pb-40"></ul>
+            </div>
 
-            <div id="playlists-view" class="view">
-                </div>
+            <div id="playlists-view" class="view"></div>
 
             <div id="queue-view" class="view">
                 <div class="flex justify-between items-center mb-4 sticky top-0 bg-primary pt-2 pb-2 z-10">
                     <h1 class="text-2xl font-bold">Cola de Reproducción</h1>
                     <button id="clear-queue-btn" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-bold">Limpiar</button>
                 </div>
-                <ul id="queue-list" class="space-y-1 pb-20"></ul>
+                <ul id="queue-list" class="space-y-1 pb-40"></ul>
             </div>
         </main>
 
-        <div id="mini-player-bar" class="p-2 flex items-center space-x-3 cursor-pointer">
-            <img id="mini-album-art" src="https://placehold.co/96x96/1e293b/94a3b8?text=?" alt="Mini Carátula" class="w-12 h-12 rounded-md flex-shrink-0 object-cover">
-            <div class="flex-grow truncate">
-                <p id="mini-song-title" class="font-semibold text-primary truncate">Sin música</p>
-                <p id="mini-song-artist" class="text-sm truncate">Selecciona una canción</p>
+        <div id="bottom-bar-wrapper">
+            <div id="mini-player-bar" class="px-2 flex items-center space-x-3 cursor-pointer">
+                <img id="mini-album-art" src="https://placehold.co/96x96/1e293b/94a3b8?text=?" alt="Mini Carátula" class="w-12 h-12 rounded-md flex-shrink-0 object-cover">
+                <div class="flex-grow truncate">
+                    <p id="mini-song-title" class="font-semibold text-primary truncate">Sin música</p>
+                    <p id="mini-song-artist" class="text-sm truncate">Selecciona una canción</p>
+                </div>
+                <button id="mini-play-pause-btn" class="play-pause-btn w-12 h-12 flex items-center justify-center rounded-full shadow-lg flex-shrink-0"></button>
             </div>
-            <button id="mini-play-pause-btn" class="play-pause-btn w-12 h-12 flex items-center justify-center rounded-full shadow-lg flex-shrink-0"></button>
+            <nav class="tab-bar flex justify-around p-2">
+                <button class="tab active flex flex-col items-center text-xs w-full py-1 border-b-2" data-view="player-view"></button>
+                <button class="tab flex flex-col items-center text-xs w-full py-1 border-b-2 border-transparent" data-view="library-view"></button>
+                <button class="tab flex flex-col items-center text-xs w-full py-1 border-b-2 border-transparent" data-view="playlists-view"></button>
+                <button class="tab flex flex-col items-center text-xs w-full py-1 border-b-2 border-transparent" data-view="queue-view"></button>
+            </nav>
         </div>
-
-        <nav class="tab-bar flex justify-around p-2 flex-shrink-0">
-            <button class="tab active flex flex-col items-center text-xs w-full py-1 border-b-2" data-view="player-view"></button>
-            <button class="tab flex flex-col items-center text-xs w-full py-1 border-b-2 border-transparent" data-view="library-view"></button>
-            <button class="tab flex flex-col items-center text-xs w-full py-1 border-b-2 border-transparent" data-view="playlists-view"></button>
-            <button class="tab flex flex-col items-center text-xs w-full py-1 border-b-2 border-transparent" data-view="queue-view"></button>
-        </nav>
     </div>
 
     <div id="context-menu-backdrop" class="context-menu-backdrop fixed inset-0 z-40 hidden"></div>
@@ -172,57 +178,32 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // --- SELECTORES DEL DOM ---
         const dom = {
-            body: document.body,
-            views: document.querySelectorAll('.view'),
-            tabs: document.querySelectorAll('.tab'),
-            // Rep. Principal
-            albumArt: document.getElementById('album-art'),
-            songTitle: document.getElementById('song-title'),
-            songArtist: document.getElementById('song-artist'),
-            progressBar: document.getElementById('progress-bar'),
-            currentTime: document.getElementById('current-time'),
-            duration: document.getElementById('duration'),
-            playPauseBtn: document.getElementById('play-pause-btn'),
-            nextBtn: document.getElementById('next-btn'),
-            prevBtn: document.getElementById('prev-btn'),
-            shuffleBtn: document.getElementById('shuffle-btn'),
-            repeatBtn: document.getElementById('repeat-btn'),
-            volumeSlider: document.getElementById('volume-slider'),
-            // Mini Rep.
-            miniPlayerBar: document.getElementById('mini-player-bar'),
-            miniAlbumArt: document.getElementById('mini-album-art'),
-            miniSongTitle: document.getElementById('mini-song-title'),
-            miniSongArtist: document.getElementById('mini-song-artist'),
+            body: document.body, views: document.querySelectorAll('.view'), tabs: document.querySelectorAll('.tab'),
+            albumArt: document.getElementById('album-art'), songTitle: document.getElementById('song-title'),
+            songArtist: document.getElementById('song-artist'), progressBar: document.getElementById('progress-bar'),
+            currentTime: document.getElementById('current-time'), duration: document.getElementById('duration'),
+            playPauseBtn: document.getElementById('play-pause-btn'), nextBtn: document.getElementById('next-btn'),
+            prevBtn: document.getElementById('prev-btn'), shuffleBtn: document.getElementById('shuffle-btn'),
+            repeatBtn: document.getElementById('repeat-btn'), volumeSlider: document.getElementById('volume-slider'),
+            miniPlayerBar: document.getElementById('mini-player-bar'), miniAlbumArt: document.getElementById('mini-album-art'),
+            miniSongTitle: document.getElementById('mini-song-title'), miniSongArtist: document.getElementById('mini-song-artist'),
             miniPlayPauseBtn: document.getElementById('mini-play-pause-btn'),
-            // Otros
-            settingsBtn: document.getElementById('settings-btn'),
-            addFilesBtn: document.getElementById('add-files-btn'),
-            clearQueueBtn: document.getElementById('clear-queue-btn'),
-            libraryList: document.getElementById('library-list'),
-            playlistsView: document.getElementById('playlists-view'),
-            queueList: document.getElementById('queue-list'),
-            fileInput: document.getElementById('file-input'),
-            contextMenu: document.getElementById('context-menu'),
-            contextMenuBackdrop: document.getElementById('context-menu-backdrop'),
-            modalContainer: document.getElementById('modal-container'),
-            songItemTemplate: document.getElementById('song-item-template'),
-            visualizerCanvas: document.getElementById('visualizer'),
+            settingsBtn: document.getElementById('settings-btn'), addFilesBtn: document.getElementById('add-files-btn'),
+            clearQueueBtn: document.getElementById('clear-queue-btn'), libraryList: document.getElementById('library-list'),
+            playlistsView: document.getElementById('playlists-view'), queueList: document.getElementById('queue-list'),
+            fileInput: document.getElementById('file-input'), contextMenu: document.getElementById('context-menu'),
+            contextMenuBackdrop: document.getElementById('context-menu-backdrop'), modalContainer: document.getElementById('modal-container'),
+            songItemTemplate: document.getElementById('song-item-template'), visualizerCanvas: document.getElementById('visualizer'),
             canvasCtx: document.getElementById('visualizer').getContext('2d'),
         };
 
-        const audio1 = document.getElementById('audio1');
-        const audio2 = document.getElementById('audio2');
-
+        const audio1 = document.getElementById('audio1'); const audio2 = document.getElementById('audio2');
         let state = {
-            library: [], playlists: [], queue: [],
-            currentContext: { type: 'library', id: null },
-            contextQueue: [], contextIndex: -1, currentSongId: null,
-            isPlaying: false, isShuffle: false, repeatMode: 'none', volume: 1,
+            library: [], playlists: [], queue: [], currentContext: { type: 'library', id: null }, contextQueue: [],
+            contextIndex: -1, currentSongId: null, isPlaying: false, isShuffle: false, repeatMode: 'none', volume: 1,
             settings: { theme: 'default', crossfadeEnabled: true, crossfadeDuration: 2 }
         };
-        
         let audioContext, analyser, sourceNode1, sourceNode2, masterGain, dataArray;
         
         function setupWebAudioAPI() {
@@ -230,25 +211,20 @@
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = audioContext.createAnalyser(); masterGain = audioContext.createGain();
-                sourceNode1 = audioContext.createMediaElementSource(audio1);
-                sourceNode2 = audioContext.createMediaElementSource(audio2);
+                sourceNode1 = audioContext.createMediaElementSource(audio1); sourceNode2 = audioContext.createMediaElementSource(audio2);
                 sourceNode1.connect(masterGain); sourceNode2.connect(masterGain);
                 masterGain.connect(analyser); analyser.connect(audioContext.destination);
                 analyser.fftSize = 256; dataArray = new Uint8Array(analyser.frequencyBinCount);
-            } catch (e) { console.error("Web Audio API no es soportada", e); }
+            } catch (e) { console.error("Web Audio API no soportada", e); }
         }
 
         const audioManager = (() => {
             let currentAudio = audio1; let standbyAudio = audio2; let fadeInterval = null;
             function swapPlayers() { [currentAudio, standbyAudio] = [standbyAudio, currentAudio]; }
             function play(song, startTime = 0) {
-                if (!song) return;
-                if (!audioContext) setupWebAudioAPI();
-                stopFade(); currentAudio.src = song.url; currentAudio.currentTime = startTime;
-                currentAudio.volume = state.volume;
-                currentAudio.play().then(() => {
-                    state.isPlaying = true; updateUIonPlayPause(); preloadNext(); drawVisualizer();
-                }).catch(e => console.error("Error al reproducir:", e));
+                if (!song) return; if (!audioContext) setupWebAudioAPI();
+                stopFade(); currentAudio.src = song.url; currentAudio.currentTime = startTime; currentAudio.volume = state.volume;
+                currentAudio.play().then(() => { state.isPlaying = true; updateUIonPlayPause(); preloadNext(); drawVisualizer(); }).catch(e => console.error("Error al reproducir:", e));
             }
             function pause() { currentAudio.pause(); state.isPlaying = false; updateUIonPlayPause(); }
             function resume() { currentAudio.play(); state.isPlaying = true; updateUIonPlayPause(); }
@@ -262,16 +238,11 @@
                         const newCurrentVolume = currentAudio.volume - volumeStep, newStandbyVolume = standbyAudio.volume + volumeStep;
                         if (newCurrentVolume >= 0) currentAudio.volume = newCurrentVolume;
                         if (newStandbyVolume <= state.volume) standbyAudio.volume = newStandbyVolume;
-                        if (newStandbyVolume >= state.volume) {
-                            stopFade(); currentAudio.pause(); swapPlayers();
-                            currentAudio.volume = state.volume; preloadNext();
-                        }
+                        if (newStandbyVolume >= state.volume) { stopFade(); currentAudio.pause(); swapPlayers(); currentAudio.volume = state.volume; preloadNext(); }
                     }, stepTime);
                 }).catch(() => { play(nextSong); });
             }
-            function preloadNext() {
-                const nextSong = getNextSongInContext(); if (nextSong) { standbyAudio.src = nextSong.url; }
-            }
+            function preloadNext() { const nextSong = getNextSongInContext(); if (nextSong) { standbyAudio.src = nextSong.url; } }
             [audio1, audio2].forEach(audio => {
                 audio.addEventListener('timeupdate', () => { if (audio === currentAudio) updateProgressUI(audio.currentTime, audio.duration); });
                 audio.addEventListener('ended', () => { if (audio === currentAudio) handleTrackEnd(); });
@@ -293,18 +264,14 @@
         function playNextSong() {
             let nextSongToPlay;
             if (state.repeatMode === 'one') { audioManager.play(getSongById(state.currentSongId), 0); return; }
-            if (state.queue.length > 0) {
-                nextSongToPlay = getSongById(state.queue.shift()); renderQueue();
-            } else {
+            if (state.queue.length > 0) { nextSongToPlay = getSongById(state.queue.shift()); renderQueue(); }
+            else {
                 const nextSong = getNextSongInContext();
-                if (nextSong) {
-                    state.contextIndex = state.contextQueue.findIndex(id => id === nextSong.id);
-                    nextSongToPlay = nextSong;
-                } else { state.isPlaying = false; updateUIonPlayPause(); return; }
+                if (nextSong) { state.contextIndex = state.contextQueue.findIndex(id => id === nextSong.id); nextSongToPlay = nextSong; }
+                else { state.isPlaying = false; updateUIonPlayPause(); return; }
             }
             if (nextSongToPlay) {
-                state.currentSongId = nextSongToPlay.id;
-                audioManager.crossfadeTo(nextSongToPlay);
+                state.currentSongId = nextSongToPlay.id; audioManager.crossfadeTo(nextSongToPlay);
                 updatePlayerUI(nextSongToPlay); updateMediaSession(nextSongToPlay); updatePlayingStatusInLists(); saveState();
             }
         }
@@ -312,10 +279,8 @@
             let prevIndex = (state.contextIndex > 0 && !state.isShuffle) ? state.contextIndex - 1 : 0;
             const prevSongId = state.contextQueue[prevIndex];
             if (prevSongId) {
-                state.contextIndex = prevIndex;
-                const song = getSongById(prevSongId);
-                state.currentSongId = song.id;
-                audioManager.crossfadeTo(song);
+                state.contextIndex = prevIndex; const song = getSongById(prevSongId);
+                state.currentSongId = song.id; audioManager.crossfadeTo(song);
                 updatePlayerUI(song); updateMediaSession(song); updatePlayingStatusInLists(); saveState();
             }
         }
@@ -324,17 +289,13 @@
         function init() {
             loadState(); setupEventListeners(); setupSVGs(); applyTheme(); renderAll();
             const lastSong = getSongById(state.currentSongId);
-            if (lastSong) {
-                updatePlayerUI(lastSong);
-            } else {
-                updatePlayerUI(null);
-            }
+            updatePlayerUI(lastSong);
+            updateMiniPlayerVisibility(); // <-- Llamada inicial para establecer el estado correcto
         }
         function saveState() {
             const stateToSave = {
-                library: state.library.map(({url, ...rest}) => rest),
-                playlists: state.playlists, currentSongId: state.currentSongId,
-                volume: state.volume, settings: state.settings
+                library: state.library.map(({url, ...rest}) => rest), playlists: state.playlists,
+                currentSongId: state.currentSongId, volume: state.volume, settings: state.settings
             };
             localStorage.setItem('musicPlayerState', JSON.stringify(stateToSave));
         }
@@ -342,18 +303,13 @@
             const savedState = localStorage.getItem('musicPlayerState');
             if (savedState) {
                 const parsed = JSON.parse(savedState);
-                if (parsed.library) {
-                    parsed.library.forEach(song => {
-                        const blob = base64toBlob(song.data); song.url = URL.createObjectURL(blob);
-                    });
-                }
+                if (parsed.library) { parsed.library.forEach(song => { const blob = base64toBlob(song.data); song.url = URL.createObjectURL(blob); }); }
                 state = { ...state, ...parsed };
             }
             setContext('library');
         }
 
         function renderAll() { renderLibrary(); renderPlaylists(); renderQueue(); updatePlayingStatusInLists(); }
-        
         function createSongListItem(song) {
             const item = dom.songItemTemplate.content.cloneNode(true).querySelector('.list-item');
             item.dataset.songId = song.id;
@@ -362,11 +318,8 @@
             item.querySelector('[data-art-src]').src = song.art || 'https://placehold.co/96x96/1e293b/94a3b8?text=?';
             item.addEventListener('click', () => {
                 const contextList = item.closest('ul');
-                if (contextList && contextList.dataset.context === 'playlist') {
-                    playSongFromContext(song.id, 'playlist', contextList.dataset.playlistId);
-                } else {
-                    playSongFromContext(song.id, 'library');
-                }
+                if (contextList && contextList.dataset.context === 'playlist') { playSongFromContext(song.id, 'playlist', contextList.dataset.playlistId); }
+                else { playSongFromContext(song.id, 'library'); }
             });
             item.querySelector('.options-btn').addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -377,61 +330,45 @@
             });
             return item;
         }
-
         function renderLibrary() {
             dom.libraryList.innerHTML = '';
-            if (state.library.length === 0) {
-                dom.libraryList.innerHTML = `<li class="text-center text-secondary p-8">Tu biblioteca está vacía. Haz clic en "Añadir" para empezar.</li>`; return;
-            }
+            if (state.library.length === 0) { dom.libraryList.innerHTML = `<li class="text-center text-secondary p-8">Tu biblioteca está vacía.</li>`; return; }
             state.library.forEach(song => dom.libraryList.appendChild(createSongListItem(song)));
             dom.libraryList.dataset.context = 'library';
         }
-
         function renderQueue() {
             dom.queueList.innerHTML = '';
             if (state.queue.length === 0) { dom.queueList.innerHTML = `<li class="text-center text-secondary p-8">La cola está vacía.</li>`; return; }
             state.queue.forEach(songId => { const song = getSongById(songId); if (song) dom.queueList.appendChild(createSongListItem(song)); });
         }
-        
         function updatePlayingStatusInLists() {
             document.querySelectorAll('.list-item').forEach(item => {
                 item.classList.toggle('playing', item.dataset.songId === state.currentSongId);
             });
         }
-
         function updatePlayerUI(song) {
             if (!song) {
-                dom.songTitle.textContent = 'Bienvenido';
-                dom.songArtist.textContent = 'Carga tu música';
+                dom.songTitle.textContent = 'Bienvenido'; dom.songArtist.textContent = 'Carga tu música';
                 dom.albumArt.src = 'https://placehold.co/400x400/1e293b/22c55e?text=M%C3%BAsica';
-                dom.miniPlayerBar.classList.remove('visible');
-                return;
+                updateMiniPlayerVisibility(); return;
             }
             dom.songTitle.textContent = song.title; dom.songArtist.textContent = song.artist;
             dom.albumArt.src = song.art || 'https://placehold.co/400x400/1e293b/22c55e?text=M%C3%BAsica';
-            
             dom.miniSongTitle.textContent = song.title; dom.miniSongArtist.textContent = song.artist;
             dom.miniAlbumArt.src = song.art || 'https://placehold.co/96x96/1e293b/94a3b8?text=?';
-
-            dom.miniPlayerBar.classList.add('visible');
+            updateMiniPlayerVisibility();
         }
-
         function updateProgressUI(currentTime, duration) {
             if (isNaN(duration)) return;
             dom.progressBar.value = (currentTime / duration) * 100;
-            dom.currentTime.textContent = formatTime(currentTime);
-            dom.duration.textContent = formatTime(duration);
+            dom.currentTime.textContent = formatTime(currentTime); dom.duration.textContent = formatTime(duration);
         }
-
         function updateUIonPlayPause() {
             [dom.playPauseBtn, dom.miniPlayPauseBtn].forEach(btn => {
-                const playIcon = btn.querySelector('[data-play-icon]');
-                const pauseIcon = btn.querySelector('[data-pause-icon]');
-                playIcon.classList.toggle('hidden', state.isPlaying);
-                pauseIcon.classList.toggle('hidden', !state.isPlaying);
+                const playIcon = btn.querySelector('[data-play-icon]'); const pauseIcon = btn.querySelector('[data-pause-icon]');
+                playIcon.classList.toggle('hidden', state.isPlaying); pauseIcon.classList.toggle('hidden', !state.isPlaying);
             });
         }
-        
         function togglePlayPause() {
             if (audioContext && audioContext.state === 'suspended') { audioContext.resume(); }
             if (state.isPlaying) audioManager.pause();
@@ -444,8 +381,7 @@
             dom.playPauseBtn.addEventListener('click', togglePlayPause);
             dom.miniPlayPauseBtn.addEventListener('click', (e) => { e.stopPropagation(); togglePlayPause(); });
             dom.miniPlayerBar.addEventListener('click', () => switchView('player-view'));
-            dom.nextBtn.addEventListener('click', playNextSong);
-            dom.prevBtn.addEventListener('click', playPrevSong);
+            dom.nextBtn.addEventListener('click', playNextSong); dom.prevBtn.addEventListener('click', playPrevSong);
             dom.progressBar.addEventListener('input', (e) => audioManager.seek((e.target.value / 100) * (audio1.duration || audio2.duration || 0)));
             dom.volumeSlider.addEventListener('input', (e) => { state.volume = e.target.value; audioManager.setVolume(state.volume); });
             dom.volumeSlider.addEventListener('change', saveState);
@@ -456,27 +392,36 @@
             dom.contextMenuBackdrop.addEventListener('click', hideContextMenu);
         }
 
+        function getActiveViewId() { return document.querySelector('.view.active')?.id; }
+
+        function updateMiniPlayerVisibility() {
+            const activeView = getActiveViewId();
+            if (activeView !== 'player-view' && state.currentSongId) {
+                dom.miniPlayerBar.classList.add('visible');
+            } else {
+                dom.miniPlayerBar.classList.remove('visible');
+            }
+        }
+        
         function switchView(viewId) {
             dom.views.forEach(view => view.classList.toggle('active', view.id === viewId));
             dom.tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.view === viewId));
+            updateMiniPlayerVisibility(); // <-- Lógica de visibilidad centralizada aquí
         }
 
         async function handleFileSelect(event) {
-            const files = Array.from(event.target.files);
-            if (files.length === 0) return;
+            const files = Array.from(event.target.files); if (files.length === 0) return;
             const wasEmpty = state.library.length === 0;
             const newSongs = await Promise.all(files.map(processFile));
             state.library.push(...newSongs);
             renderLibrary(); setContext('library'); saveState();
             if (wasEmpty && newSongs.length > 0) playSongFromContext(newSongs[0].id, 'library');
         }
-        
         async function processFile(file) {
             return new Promise((resolve) => {
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    const base64String = arrayBufferToBase64(e.target.result);
-                    const blob = base64toBlob(base64String);
+                    const base64String = arrayBufferToBase64(e.target.result); const blob = base64toBlob(base64String);
                     window.jsmediatags.read(file, {
                         onSuccess: (tag) => {
                             const { title, artist, album, picture } = tag.tags;
@@ -495,7 +440,6 @@
                 reader.readAsArrayBuffer(file);
             });
         }
-        
         function setContext(type, id = null) {
             state.currentContext = { type, id };
             if (type === 'library') state.contextQueue = state.library.map(s => s.id);
@@ -504,118 +448,78 @@
                 if (playlist) state.contextQueue = playlist.songIds;
             } else { state.contextQueue = []; }
         }
-        
         function playSongFromContext(songId, contextType, contextId = null) {
-            if (state.currentContext.type !== contextType || state.currentContext.id !== contextId) {
-                setContext(contextType, contextId);
-            }
+            if (state.currentContext.type !== contextType || state.currentContext.id !== contextId) { setContext(contextType, contextId); }
             state.contextIndex = state.contextQueue.findIndex(id => id === songId);
-            state.currentSongId = songId;
-            const song = getSongById(songId);
+            state.currentSongId = songId; const song = getSongById(songId);
             if (song) {
                 audioManager.play(song);
                 updatePlayerUI(song); updateMediaSession(song); updatePlayingStatusInLists(); saveState();
             }
         }
-        
         function renderPlaylists(playlistId = null) {
             dom.playlistsView.innerHTML = '';
-            // Añadimos padding para que el contenido no quede oculto por el mini-reproductor
-            dom.playlistsView.classList.add('pb-20'); 
-            if (playlistId) {
-                renderPlaylistDetail(playlistId);
-            } else {
-                renderPlaylistList();
-            }
+            dom.playlistsView.classList.add('pb-40'); 
+            if (playlistId) { renderPlaylistDetail(playlistId); } else { renderPlaylistList(); }
         }
-
         function renderPlaylistList() {
             const header = `<div class="flex justify-between items-center mb-4 sticky top-0 bg-primary pt-2 pb-2 z-10"><h1 class="text-2xl font-bold">Playlists</h1><button id="create-playlist-btn" class="action-btn px-4 py-2 rounded-lg text-sm font-bold">Crear</button></div>`;
             const list = document.createElement('ul'); list.className = 'space-y-2';
-            if (state.playlists.length === 0) {
-                list.innerHTML = `<li class="text-center text-secondary p-8">No has creado ninguna playlist.</li>`;
-            } else {
+            if (state.playlists.length === 0) { list.innerHTML = `<li class="text-center text-secondary p-8">No has creado ninguna playlist.</li>`; }
+            else {
                 state.playlists.forEach(p => {
                     const li = document.createElement('li');
                     li.className = 'list-item flex items-center p-3 rounded-lg cursor-pointer space-x-4';
                     li.innerHTML = `<div class="w-12 h-12 rounded-md bg-tertiary flex items-center justify-center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div><div class="flex-grow truncate"><p class="font-semibold text-primary truncate">${p.name}</p><p class="text-sm">${p.songIds.length} canciones</p></div><button data-playlist-id="${p.id}" class="playlist-options-btn p-2 rounded-full hover-bg flex-shrink-0"><svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M12 16a2 2 0 0 1 2 2a2 2 0 0 1-2 2a2 2 0 0 1-2-2a2 2 0 0 1 2-2m0-6a2 2 0 0 1 2 2a2 2 0 0 1-2 2a2 2 0 0 1-2-2a2 2 0 0 1 2-2m0-6a2 2 0 0 1 2 2a2 2 0 0 1-2 2a2 2 0 0 1-2-2a2 2 0 0 1 2-2z"/></svg></button>`;
-                    li.addEventListener('click', () => renderPlaylists(p.id));
-                    list.appendChild(li);
+                    li.addEventListener('click', () => renderPlaylists(p.id)); list.appendChild(li);
                 });
             }
             dom.playlistsView.innerHTML = header; dom.playlistsView.appendChild(list);
             document.getElementById('create-playlist-btn').addEventListener('click', createPlaylist);
             document.querySelectorAll('.playlist-options-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const id = e.currentTarget.dataset.playlistId;
-                    showContextMenu(e.clientX, e.clientY, [
-                        { label: 'Renombrar', action: () => renamePlaylist(id) },
-                        { label: 'Eliminar', action: () => deletePlaylist(id) }
-                    ]);
+                    e.stopPropagation(); const id = e.currentTarget.dataset.playlistId;
+                    showContextMenu(e.clientX, e.clientY, [ { label: 'Renombrar', action: () => renamePlaylist(id) }, { label: 'Eliminar', action: () => deletePlaylist(id) } ]);
                 });
             });
         }
-        
         function renderPlaylistDetail(playlistId) {
-            const playlist = state.playlists.find(p => p.id === playlistId);
-            if (!playlist) { renderPlaylists(); return; }
+            const playlist = state.playlists.find(p => p.id === playlistId); if (!playlist) { renderPlaylists(); return; }
             const header = `<div class="flex items-center mb-4 sticky top-0 bg-primary pt-2 pb-2 z-10"><button id="back-to-playlists-btn" class="p-2 mr-2 rounded-full hover-bg"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg></button><h1 class="text-2xl font-bold truncate">${playlist.name}</h1></div>`;
-            const songList = document.createElement('ul');
-            songList.className = 'space-y-1'; songList.dataset.context = 'playlist'; songList.dataset.playlistId = playlistId;
-            if (playlist.songIds.length === 0) {
-                songList.innerHTML = `<li class="text-center text-secondary p-8">Esta playlist está vacía. Añade canciones.</li>`;
-            } else {
-                playlist.songIds.forEach(songId => {
-                    const song = getSongById(songId); if (song) songList.appendChild(createSongListItem(song));
-                });
-            }
+            const songList = document.createElement('ul'); songList.className = 'space-y-1'; songList.dataset.context = 'playlist'; songList.dataset.playlistId = playlistId;
+            if (playlist.songIds.length === 0) { songList.innerHTML = `<li class="text-center text-secondary p-8">Esta playlist está vacía.</li>`; }
+            else { playlist.songIds.forEach(songId => { const song = getSongById(songId); if (song) songList.appendChild(createSongListItem(song)); }); }
             dom.playlistsView.innerHTML = header; dom.playlistsView.appendChild(songList);
             document.getElementById('back-to-playlists-btn').addEventListener('click', () => renderPlaylists());
             updatePlayingStatusInLists();
         }
-        
         function createPlaylist() {
             showPromptModal("Nueva Playlist", "Nombre de la playlist", (name) => {
-                if (name && name.trim()) {
-                    state.playlists.push({ id: self.crypto.randomUUID(), name: name.trim(), songIds: [] });
-                    saveState();
-                    renderPlaylists();
-                }
+                if (name && name.trim()) { state.playlists.push({ id: self.crypto.randomUUID(), name: name.trim(), songIds: [] }); saveState(); renderPlaylists(); }
             });
         }
-
         function renamePlaylist(playlistId) {
             const playlist = state.playlists.find(p => p.id === playlistId); if (!playlist) return;
             showPromptModal("Renombrar Playlist", "Nuevo nombre", (newName) => {
-                if (newName && newName.trim()) {
-                    playlist.name = newName.trim(); saveState(); renderPlaylists();
-                }
+                if (newName && newName.trim()) { playlist.name = newName.trim(); saveState(); renderPlaylists(); }
             }, playlist.name);
         }
-
         function deletePlaylist(playlistId) {
             const playlist = state.playlists.find(p => p.id === playlistId); if (!playlist) return;
             showConfirmModal(`¿Eliminar "${playlist.name}"?`, "Esta acción no se puede deshacer.", () => {
                 state.playlists = state.playlists.filter(p => p.id !== playlistId); saveState(); renderPlaylists();
             });
         }
-
         function addSongToPlaylist(songId, playlistId) {
             const playlist = state.playlists.find(p => p.id === playlistId);
-            if (playlist && !playlist.songIds.includes(songId)) {
-                playlist.songIds.push(songId); saveState();
-            }
+            if (playlist && !playlist.songIds.includes(songId)) { playlist.songIds.push(songId); saveState(); }
         }
-        
         function showModal(content) {
             dom.modalContainer.innerHTML = `<div class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-70 opacity-0 transition-opacity"><div class="modal-content w-full max-w-sm rounded-xl shadow-2xl p-6 space-y-4">${content}</div></div>`;
             dom.modalContainer.classList.remove('hidden');
             const backdrop = dom.modalContainer.querySelector('.modal-backdrop');
-            setTimeout(() => backdrop.classList.remove('opacity-0'), 10);
-            return backdrop;
+            setTimeout(() => backdrop.classList.remove('opacity-0'), 10); return backdrop;
         }
-
         function closeModal() {
             const backdrop = dom.modalContainer.querySelector('.modal-backdrop');
             if (backdrop) {
@@ -623,18 +527,14 @@
                 setTimeout(() => { dom.modalContainer.classList.add('hidden'); dom.modalContainer.innerHTML = ''; }, 300);
             }
         }
-
         function openAddToPlaylistModal(songId) {
-            let playlistItems = state.playlists.length > 0
-                ? state.playlists.map(p => `<li class="list-item p-3 rounded-lg cursor-pointer" data-id="${p.id}">${p.name}</li>`).join('')
-                : `<li class="text-center text-secondary p-4">No hay playlists.</li>`;
+            let playlistItems = state.playlists.length > 0 ? state.playlists.map(p => `<li class="list-item p-3 rounded-lg cursor-pointer" data-id="${p.id}">${p.name}</li>`).join('') : `<li class="text-center text-secondary p-4">No hay playlists.</li>`;
             const modalContent = `<h2 class="text-xl font-bold text-primary">Añadir a...</h2><ul class="max-h-60 overflow-y-auto space-y-1">${playlistItems}</ul><button id="close-modal-btn" class="mt-4 w-full bg-tertiary text-primary py-2 rounded-lg hover-bg">Cerrar</button>`;
             const modal = showModal(modalContent);
             modal.querySelectorAll('.list-item').forEach(item => { item.addEventListener('click', () => { addSongToPlaylist(songId, item.dataset.id); closeModal(); }); });
             modal.querySelector('#close-modal-btn').addEventListener('click', closeModal);
             modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
         }
-
         function showPromptModal(title, label, callback, defaultValue = '') {
             const modalContent = `<h2 class="text-xl font-bold text-primary">${title}</h2><label for="prompt-input" class="text-sm">${label}</label><input id="prompt-input" type="text" value="${defaultValue}" class="w-full p-2 rounded bg-tertiary text-primary border border-interactive focus:outline-none focus:ring-2 focus:ring-accent-primary"><div class="flex justify-end space-x-2 mt-4"><button id="prompt-cancel" class="bg-tertiary px-4 py-2 rounded-lg">Cancelar</button><button id="prompt-ok" class="action-btn px-4 py-2 rounded-lg">Aceptar</button></div>`;
             const modal = showModal(modalContent);
@@ -645,7 +545,6 @@
             modal.querySelector('#prompt-cancel').addEventListener('click', closeModal);
             modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
         }
-        
         function showConfirmModal(title, message, onConfirm) {
             const modalContent = `<h2 class="text-xl font-bold text-primary">${title}</h2><p class="text-sm">${message}</p><div class="flex justify-end space-x-2 mt-4"><button id="confirm-cancel" class="bg-tertiary px-4 py-2 rounded-lg">Cancelar</button><button id="confirm-ok" class="bg-red-600 text-white px-4 py-2 rounded-lg">Confirmar</button></div>`;
             const modal = showModal(modalContent);
@@ -653,14 +552,11 @@
             modal.querySelector('#confirm-cancel').addEventListener('click', closeModal);
             modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
         }
-        
         function showContextMenu(x, y, items) {
             dom.contextMenu.innerHTML = '';
             items.forEach(item => {
-                const li = document.createElement('li');
-                li.textContent = item.label; li.className = 'px-4 py-2 hover-bg rounded cursor-pointer';
-                li.addEventListener('click', () => { item.action(); hideContextMenu(); });
-                dom.contextMenu.appendChild(li);
+                const li = document.createElement('li'); li.textContent = item.label; li.className = 'px-4 py-2 hover-bg rounded cursor-pointer';
+                li.addEventListener('click', () => { item.action(); hideContextMenu(); }); dom.contextMenu.appendChild(li);
             });
             const menuWidth = dom.contextMenu.offsetWidth; const menuHeight = dom.contextMenu.offsetHeight;
             const correctedX = (x + menuWidth > window.innerWidth) ? window.innerWidth - menuWidth - 10 : x;
@@ -668,17 +564,12 @@
             dom.contextMenu.style.left = `${correctedX}px`; dom.contextMenu.style.top = `${correctedY}px`;
             dom.contextMenu.classList.remove('hidden'); dom.contextMenuBackdrop.classList.remove('hidden');
         }
-        function hideContextMenu() {
-            dom.contextMenu.classList.add('hidden'); dom.contextMenuBackdrop.classList.add('hidden');
-        }
-
+        function hideContextMenu() { dom.contextMenu.classList.add('hidden'); dom.contextMenuBackdrop.classList.add('hidden'); }
         function openSettingsModal() {
             const modalContent = `<div class="flex justify-between items-center mb-2"><h2 class="text-2xl font-bold">Configuración</h2><button id="close-settings-btn" class="p-2 rounded-full hover-bg text-2xl leading-none">&times;</button></div><div class="accordion-item"><button class="accordion-header"><span>Transiciones</span><span class="accordion-icon">▼</span></button><div class="accordion-content"><div class="flex items-center justify-between py-2"><label for="crossfade-toggle" class="text-sm">Crossfade</label><div class="flex items-center space-x-3"><span id="crossfade-duration-label" class="text-xs w-12 text-center"></span><input type="range" id="crossfade-duration-slider" min="1" max="10" class="w-24"><input type="checkbox" id="crossfade-toggle" class="form-checkbox h-5 w-5 rounded bg-slate-700 border-slate-600 text-accent-primary focus:ring-accent-primary"></div></div></div></div><div class="accordion-item"><button class="accordion-header"><span>Temas</span><span class="accordion-icon">▼</span></button><div class="accordion-content"><div id="theme-selector" class="flex items-center space-x-4 py-2"><button data-theme="default" class="theme-btn w-8 h-8 rounded-full bg-[#0f172a] border-2 border-slate-500"></button><button data-theme="sunset" class="theme-btn w-8 h-8 rounded-full bg-[#4c1d95] border-2 border-slate-500"></button><button data-theme="ocean" class="theme-btn w-8 h-8 rounded-full bg-[#0c4a6e] border-2 border-slate-500"></button></div></div></div>`;
             const modal = showModal(modalContent);
-            modal.querySelector('#close-settings-btn').addEventListener('click', closeModal);
-            modal.addEventListener('click', (e) => { if(e.target === modal) closeModal(); });
-            const crossfadeToggle = modal.querySelector('#crossfade-toggle');
-            const crossfadeSlider = modal.querySelector('#crossfade-duration-slider');
+            modal.querySelector('#close-settings-btn').addEventListener('click', closeModal); modal.addEventListener('click', (e) => { if(e.target === modal) closeModal(); });
+            const crossfadeToggle = modal.querySelector('#crossfade-toggle'); const crossfadeSlider = modal.querySelector('#crossfade-duration-slider');
             const crossfadeLabel = modal.querySelector('#crossfade-duration-label');
             crossfadeToggle.checked = state.settings.crossfadeEnabled; crossfadeSlider.value = state.settings.crossfadeDuration;
             crossfadeLabel.textContent = `${state.settings.crossfadeDuration}s`;
@@ -689,7 +580,6 @@
             modal.querySelectorAll('.accordion-header').forEach(header => header.addEventListener('click', () => { header.classList.toggle('active'); header.nextElementSibling.classList.toggle('open'); }));
         }
         function applyTheme(){ dom.body.className = `theme-${state.settings.theme || 'default'}`; }
-        
         function drawVisualizer() {
             if (!state.isPlaying || !analyser) { dom.canvasCtx.clearRect(0, 0, dom.visualizerCanvas.width, dom.visualizerCanvas.height); return; }
             requestAnimationFrame(drawVisualizer); analyser.getByteFrequencyData(dataArray);
@@ -698,11 +588,9 @@
             for (let i = 0; i < dataArray.length; i++) {
                 const barHeight = dataArray[i] / 2;
                 dom.canvasCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent-primary') + '99';
-                dom.canvasCtx.fillRect(x, dom.visualizerCanvas.height - barHeight, barWidth, barHeight);
-                x += barWidth + 1;
+                dom.canvasCtx.fillRect(x, dom.visualizerCanvas.height - barHeight, barWidth, barHeight); x += barWidth + 1;
             }
         }
-
         function formatTime(s) { const m=Math.floor(s/60),c=Math.floor(s%60); return isNaN(m)?'0:00':`${m}:${c<10?'0':''}${c}`; }
         function arrayBufferToBase64(b) { let s='';new Uint8Array(b).forEach(v=>s+=String.fromCharCode(v));return window.btoa(s); }
         function base64toBlob(b) { try { const s=atob(b),a=[];for(let i=0;i<s.length;i+=512)a.push(new Uint8Array([...s.slice(i,i+512)].map(c=>c.charCodeAt(0))));return new Blob(a,{type:'audio/mpeg'});}catch(e){return new Blob([]);}}
@@ -726,7 +614,6 @@
             ];
             dom.tabs.forEach((tab, index) => { tab.innerHTML = tabsData[index].svg; });
         }
-        
         init();
     });
     </script>
