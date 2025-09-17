@@ -34,8 +34,8 @@
         .main-container { display: flex; flex-direction: column; height: 100%; width: 100%; max-width: 450px; margin: auto; background-color: var(--bg-primary); box-shadow: 0 0 20px rgba(0,0,0,0.5); }
         main { flex-grow: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; position: relative; }
 
-        .player-view-content, .controls-container, .tab-bar, .context-menu, .modal-content, .accordion-header, #mini-player-bar { background-color: var(--bg-secondary); }
-        h1, h2, h3, .settings-modal h2, .text-primary { color: var(--text-primary); }
+        .player-view-content, .controls-container, .tab-bar, .context-menu, .modal-content, #mini-player-bar { background-color: var(--bg-secondary); }
+        h1, h2, h3, .text-primary { color: var(--text-primary); }
         .play-pause-btn, .action-btn { background-color: var(--accent-primary); color: var(--bg-primary); }
         .play-pause-btn:hover, .action-btn:hover { background-color: var(--accent-hover); }
         .accent-text, .tab.active, .control-btn.active { color: var(--accent-primary); }
@@ -50,10 +50,18 @@
         input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; background: var(--text-primary); border-radius: 50%; }
         
         .modal-backdrop, .context-menu-backdrop { transition: opacity 0.3s ease-in-out; background-color: rgba(0,0,0,0.7); }
-        #prompt-input { color: var(--bg-primary); } /* Corrige color del texto en el input del modal */
+        #prompt-input { color: var(--bg-primary); }
         
         .view { display: none; height: 100%; }
-        .view.active { display: block; }
+        /* Corrección definitiva para el cambio de vistas */
+        .view.active { 
+            display: flex; /* Usar flex para que la vista activa se comporte como un bloque flexible */
+            flex-direction: column; /* Asegura que el contenido interno de las vistas se apile verticalmente */
+        }
+        /* Para las vistas que no son el reproductor, un display:block simple es suficiente si no tienen estructura flex interna */
+        #library-view.active, #playlists-view.active, #queue-view.active {
+            display: block;
+        }
         
         main::-webkit-scrollbar { width: 8px; }
         main::-webkit-scrollbar-track { background: var(--bg-secondary); }
@@ -66,17 +74,13 @@
         }
         #mini-player-bar.visible { max-height: 100px; padding-top: 0.5rem; padding-bottom: 0.5rem; }
 
-        /* Estilos para el Ecualizador */
+        /* Estilos Ecualizador */
         .knob-container { display: flex; flex-direction: column; align-items: center; }
         .knob {
             width: 50px; height: 50px; border-radius: 50%; background-color: var(--bg-tertiary);
             position: relative; cursor: pointer; border: 2px solid var(--bg-interactive);
         }
-        .knob::after {
-            content: ''; position: absolute; width: 4px; height: 12px;
-            background-color: var(--accent-primary); top: 8px; left: 50%;
-            transform: translateX(-50%); border-radius: 2px;
-        }
+        .knob::after { content: ''; position: absolute; width: 4px; height: 12px; background-color: var(--accent-primary); top: 8px; left: 50%; transform: translateX(-50%); border-radius: 2px; }
         .knob-label { font-size: 0.75rem; margin-top: 0.5rem; font-weight: 500; }
     </style>
 </head>
@@ -84,7 +88,7 @@
     
     <div class="main-container">
         <main class="p-4">
-            <div id="player-view" class="view active flex flex-col justify-between h-full space-y-4">
+            <div id="player-view" class="view active justify-between h-full space-y-4">
                 <div class="flex-shrink-0 flex justify-between items-center">
                     <button id="eq-btn" class="p-2 hover-bg rounded-full z-10 inline-block">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M2 14h4M10 8h4M18 16h4"/></svg>
@@ -93,7 +97,7 @@
                 </div>
                 <div class="player-view-content flex-grow flex flex-col justify-center items-center space-y-4 p-4 rounded-lg">
                     <div class="relative aspect-square w-full max-w-xs rounded-xl shadow-lg overflow-hidden">
-                        <img id="album-art" src="https://placehold.co/400x400/1e293b/f1f5f9" alt="Carátula" class="w-full h-full object-cover">
+                        <img id="album-art" src="https://placehold.co/400x400/1e293b/1e293b" alt="Carátula" class="w-full h-full object-cover">
                         <canvas id="visualizer" class="absolute inset-0 w-full h-full opacity-60"></canvas>
                     </div>
                     <div class="text-center w-full px-4">
@@ -142,7 +146,7 @@
 
         <div id="bottom-bar-wrapper">
             <div id="mini-player-bar" class="px-2 flex items-center space-x-3 cursor-pointer">
-                <img id="mini-album-art" src="https://placehold.co/96x96/1e293b/f1f5f9" alt="Mini Carátula" class="w-12 h-12 rounded-md flex-shrink-0 object-cover">
+                <img id="mini-album-art" src="https://placehold.co/96x96/1e293b/1e293b" alt="Mini Carátula" class="w-12 h-12 rounded-md flex-shrink-0 object-cover">
                 <div class="flex-grow truncate">
                     <p id="mini-song-title" class="font-semibold text-primary truncate">Sin música</p>
                     <p id="mini-song-artist" class="text-sm truncate">Selecciona una canción</p>
@@ -214,18 +218,14 @@
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = audioContext.createAnalyser(); masterGain = audioContext.createGain();
-                
                 bassFilter = audioContext.createBiquadFilter(); bassFilter.type = "lowshelf"; bassFilter.frequency.value = 250;
                 midsFilter = audioContext.createBiquadFilter(); midsFilter.type = "peaking"; midsFilter.frequency.value = 1000; midsFilter.Q.value = 1;
                 trebleFilter = audioContext.createBiquadFilter(); trebleFilter.type = "highshelf"; trebleFilter.frequency.value = 4000;
-
                 sourceNode1 = audioContext.createMediaElementSource(audio1); sourceNode2 = audioContext.createMediaElementSource(audio2);
-                
                 sourceNode1.connect(bassFilter); sourceNode2.connect(bassFilter);
                 bassFilter.connect(midsFilter); midsFilter.connect(trebleFilter);
                 trebleFilter.connect(masterGain);
                 masterGain.connect(analyser); analyser.connect(audioContext.destination);
-
                 analyser.fftSize = 256; dataArray = new Uint8Array(analyser.frequencyBinCount);
                 applyEQ(); 
             } catch (e) { console.error("Web Audio API no soportada", e); }
@@ -235,7 +235,7 @@
             let currentAudio = audio1; let standbyAudio = audio2; let fadeInterval = null;
             function play(song, startTime = 0) {
                 if (!song) return; if (!audioContext) setupWebAudioAPI();
-                stopFade(); currentAudio.src = song.url; currentAudio.currentTime = startTime; currentAudio.volume = state.volume;
+                stopFade(); currentAudio.src = song.url; currentAudio.currentTime = startTime; masterGain.gain.value = state.volume;
                 currentAudio.play().then(() => { state.isPlaying = true; updateUIonPlayPause(); preloadNext(); drawVisualizer(); }).catch(e => console.error("Error al reproducir:", e));
             }
             function pause() { currentAudio.pause(); state.isPlaying = false; updateUIonPlayPause(); }
@@ -243,15 +243,18 @@
             function stopFade() { if (fadeInterval) clearInterval(fadeInterval); fadeInterval = null; }
             function crossfadeTo(nextSong) {
                 if (!nextSong || !state.settings.crossfadeEnabled || !state.isPlaying) { play(nextSong); return; }
-                stopFade(); standbyAudio.src = nextSong.url; standbyAudio.volume = 0;
+                stopFade(); standbyAudio.src = nextSong.url;
+                const standbyGain = audioContext.createGain(); standbyGain.gain.value = 0;
+                const source = audioContext.createMediaElementSource(standbyAudio); source.connect(standbyGain).connect(bassFilter);
+                
                 standbyAudio.play().then(() => {
-                    const duration = state.settings.crossfadeDuration * 1000, steps = 50, stepTime = duration / steps, volumeStep = state.volume / steps;
-                    fadeInterval = setInterval(() => {
-                        const newCurrentVolume = currentAudio.volume - volumeStep, newStandbyVolume = standbyAudio.volume + volumeStep;
-                        if (newCurrentVolume >= 0) currentAudio.volume = newCurrentVolume;
-                        if (newStandbyVolume <= state.volume) standbyAudio.volume = newStandbyVolume;
-                        if (newStandbyVolume >= state.volume) { stopFade(); currentAudio.pause(); [currentAudio, standbyAudio] = [standbyAudio, currentAudio]; currentAudio.volume = state.volume; preloadNext(); }
-                    }, stepTime);
+                    const duration = state.settings.crossfadeDuration * 1000;
+                    masterGain.gain.linearRampToValueAtTime(0, audioContext.currentTime + duration/1000);
+                    standbyGain.gain.linearRampToValueAtTime(state.volume, audioContext.currentTime + duration/1000);
+                    setTimeout(() => {
+                        currentAudio.pause(); [currentAudio, standbyAudio] = [standbyAudio, currentAudio];
+                        masterGain.gain.value = state.volume; preloadNext();
+                    }, duration);
                 }).catch(() => { play(nextSong); });
             }
             function preloadNext() { const nextSong = getNextSongInContext(); if (nextSong) { standbyAudio.src = nextSong.url; } }
@@ -265,14 +268,15 @@
         function getSongById(id) { return state.library.find(song => song.id === id); }
         function getNextSongInContext() {
             if (state.isShuffle) {
-                if (state.contextQueue.length <= 1) return null;
+                if (state.contextQueue.length <= 1) return (state.repeatMode !== 'none') ? getSongById(state.currentSongId) : null;
                 let randomIndex;
                 do { randomIndex = Math.floor(Math.random() * state.contextQueue.length); } while (state.contextQueue[randomIndex] === state.currentSongId);
-                return getSongById(state.contextQueue[randomIndex]);
+                state.contextIndex = randomIndex; return getSongById(state.contextQueue[randomIndex]);
             } else {
                 let nextIndex = state.contextIndex + 1;
                 if (state.repeatMode === 'all' && nextIndex >= state.contextQueue.length) { nextIndex = 0; }
-                return getSongById(state.contextQueue[nextIndex]);
+                if (nextIndex >= state.contextQueue.length && state.repeatMode !== 'all') return null;
+                state.contextIndex = nextIndex; return getSongById(state.contextQueue[nextIndex]);
             }
         }
         function playNextSong() {
@@ -280,23 +284,18 @@
             let nextSongToPlay;
             if (state.queue.length > 0) { nextSongToPlay = getSongById(state.queue.shift()); renderQueue(); }
             else {
-                const nextSong = getNextSongInContext();
-                if (nextSong) {
-                    state.contextIndex = state.contextQueue.findIndex(id => id === nextSong.id);
-                    nextSongToPlay = nextSong;
-                } else { state.isPlaying = false; updateUIonPlayPause(); return; }
+                nextSongToPlay = getNextSongInContext();
+                if (!nextSongToPlay) { state.isPlaying = false; updateUIonPlayPause(); return; }
             }
-            if (nextSongToPlay) {
-                state.currentSongId = nextSongToPlay.id; audioManager.crossfadeTo(nextSongToPlay);
-                updatePlayerUI(nextSongToPlay); updateMediaSession(nextSongToPlay); updatePlayingStatusInLists(); saveState();
-            }
+            state.currentSongId = nextSongToPlay.id; audioManager.play(nextSongToPlay);
+            updatePlayerUI(nextSongToPlay); updateMediaSession(nextSongToPlay); updatePlayingStatusInLists(); saveState();
         }
         function playPrevSong() {
             let prevIndex = (state.contextIndex > 0 && !state.isShuffle) ? state.contextIndex - 1 : 0;
             const prevSongId = state.contextQueue[prevIndex];
             if (prevSongId) {
                 state.contextIndex = prevIndex; const song = getSongById(prevSongId);
-                state.currentSongId = song.id; audioManager.crossfadeTo(song);
+                state.currentSongId = song.id; audioManager.play(song);
                 updatePlayerUI(song); updateMediaSession(song); updatePlayingStatusInLists(); saveState();
             }
         }
@@ -328,7 +327,7 @@
             const item = dom.songItemTemplate.content.cloneNode(true).querySelector('.list-item');
             item.dataset.songId = song.id;
             item.querySelector('[data-title]').textContent = song.title; item.querySelector('[data-artist]').textContent = song.artist;
-            item.querySelector('[data-art-src]').src = song.art || 'https://placehold.co/96x96/1e293b/f1f5f9';
+            item.querySelector('[data-art-src]').src = song.art || 'https://placehold.co/96x96/1e293b/1e293b';
             item.addEventListener('click', () => {
                 const contextList = item.closest('ul');
                 if (contextList && contextList.dataset.context === 'playlist') { playSongFromContext(song.id, 'playlist', contextList.dataset.playlistId); }
@@ -356,14 +355,14 @@
         }
         function updatePlayingStatusInLists() { document.querySelectorAll('.list-item').forEach(item => item.classList.toggle('playing', item.dataset.songId === state.currentSongId)); }
         function updatePlayerUI(song) {
-            const defaultArt = 'https://placehold.co/400x400/1e293b/f1f5f9';
+            const defaultArt = 'https://placehold.co/400x400/1e293b/1e293b';
             if (!song) {
                 dom.songTitle.textContent = 'Bienvenido'; dom.songArtist.textContent = 'Carga tu música'; dom.albumArt.src = defaultArt;
                 updateMiniPlayerVisibility(); return;
             }
             dom.songTitle.textContent = song.title; dom.songArtist.textContent = song.artist;
             dom.albumArt.src = song.art || defaultArt; dom.miniSongTitle.textContent = song.title;
-            dom.miniSongArtist.textContent = song.artist; dom.miniAlbumArt.src = song.art || 'https://placehold.co/96x96/1e293b/f1f5f9';
+            dom.miniSongArtist.textContent = song.artist; dom.miniAlbumArt.src = song.art || 'https://placehold.co/96x96/1e293b/1e293b';
             updateMiniPlayerVisibility();
         }
         function updateProgressUI(currentTime, duration) {
@@ -435,6 +434,7 @@
             else if (type === 'playlist') {
                 const playlist = state.playlists.find(p => p.id === id); if (playlist) state.contextQueue = playlist.songIds;
             } else { state.contextQueue = []; }
+            state.contextIndex = state.contextQueue.findIndex(sId => sId === state.currentSongId);
         }
         function playSongFromContext(songId, contextType, contextId = null) {
             if (state.currentContext.type !== contextType || state.currentContext.id !== contextId) { setContext(contextType, contextId); }
@@ -513,7 +513,7 @@
                 <div class="flex justify-around items-center p-4">
                     ${['bass', 'mids', 'treble'].map(type => `
                         <div class="knob-container">
-                            <div class="knob" data-type="${type}" style="transform: rotate(${state.settings.eq[type] * 2.7}deg)"></div>
+                            <div class="knob" data-type="${type}" style="transform: rotate(${((state.settings.eq[type] + 20) / 40) * 135}deg)"></div>
                             <span class="knob-label">${type.charAt(0).toUpperCase() + type.slice(1)}</span>
                         </div>
                     `).join('')}
@@ -521,37 +521,27 @@
             const modal = showModal(modalContent);
             modal.querySelector('#close-eq-btn').addEventListener('click', closeModal);
             modal.querySelectorAll('.knob').forEach(knob => {
-                let isDragging = false;
-                const knobType = knob.dataset.type;
-                knob.addEventListener('mousedown', () => isDragging = true);
-                window.addEventListener('mouseup', () => isDragging = false);
+                let isDragging = false; const knobType = knob.dataset.type;
+                knob.addEventListener('mousedown', (e) => { isDragging = true; e.preventDefault(); });
+                window.addEventListener('mouseup', () => { if(isDragging) { isDragging = false; saveState(); } });
                 window.addEventListener('mousemove', (e) => {
                     if (!isDragging) return;
                     const rect = knob.getBoundingClientRect();
-                    const centerX = rect.left + rect.width / 2;
-                    const centerY = rect.top + rect.height / 2;
+                    const centerX = rect.left + rect.width / 2; const centerY = rect.top + rect.height / 2;
                     const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI) + 90;
                     let rotation = Math.round(angle);
                     if (rotation < 0) rotation += 360;
-                    if (rotation > 270) rotation = 0; if (rotation > 135) rotation = 135;
+                    if (rotation > 270 && rotation < 360) rotation = 0; if (rotation > 135) rotation = 135;
                     
-                    const value = (rotation / 135) * 40 - 20; // de -20dB a +20dB
+                    const value = (rotation / 135) * 40 - 20;
                     state.settings.eq[knobType] = value;
                     knob.style.transform = `rotate(${rotation}deg)`;
                     applyEQ();
                 });
-                knob.addEventListener('dblclick', () => { // Double click to reset
-                    knob.style.transform = 'rotate(0deg)'; state.settings.eq[knobType] = 0; applyEQ(); saveState();
-                });
+                knob.addEventListener('dblclick', () => { knob.style.transform = `rotate(${((0 + 20) / 40) * 135}deg)`; state.settings.eq[knobType] = 0; applyEQ(); saveState(); });
             });
-            window.addEventListener('mouseup', saveState, { once: true });
         }
-        function applyEQ() {
-            if (!audioContext) return;
-            bassFilter.gain.value = state.settings.eq.bass;
-            midsFilter.gain.value = state.settings.eq.mids;
-            trebleFilter.gain.value = state.settings.eq.treble;
-        }
+        function applyEQ() { if (!audioContext) return; bassFilter.gain.value = state.settings.eq.bass; midsFilter.gain.value = state.settings.eq.mids; trebleFilter.gain.value = state.settings.eq.treble; }
         function setupSVGs(){
             const icons = {
                 'settings-btn': `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`,
