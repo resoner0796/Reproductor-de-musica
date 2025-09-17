@@ -12,20 +12,26 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
 
     <style>
-        :root { /* Tema por defecto (oscuro) */
-            --bg-primary: #0f172a; --bg-secondary: #1e293b; --bg-tertiary: #334155;
-            --bg-interactive: #475569; --text-primary: #f1f5f9; --text-secondary: #94a3b8;
-            --accent-primary: #22c55e; --accent-hover: #4ade80;
+        /* TEMA: Medianoche (Default) */
+        :root { 
+            --bg-primary: #1a1b26; --bg-secondary: #24283b; --bg-tertiary: #414868;
+            --bg-interactive: #565f89; --text-primary: #c0caf5; --text-secondary: #a9b1d6;
+            --accent-primary: #bb9af7; --accent-hover: #dbb2ff;
+            --bg-glass: rgba(36, 40, 59, 0.65); --border-glass: rgba(192, 202, 245, 0.15);
         }
+        /* TEMA: Ámbar */
         .theme-sunset {
-             --bg-primary: #4c1d95; --bg-secondary: #5b21b6; --bg-tertiary: #7c3aed;
-            --bg-interactive: #9333ea; --text-primary: #f5d0fe; --text-secondary: #e9d5ff;
-            --accent-primary: #f97316; --accent-hover: #fb923c;
+             --bg-primary: #2d1d2b; --bg-secondary: #452a42; --bg-tertiary: #6d435a;
+            --bg-interactive: #9d6b7b; --text-primary: #f5e0e6; --text-secondary: #e6c0c8;
+            --accent-primary: #ff7a5c; --accent-hover: #ff9e86;
+            --bg-glass: rgba(69, 42, 66, 0.65); --border-glass: rgba(245, 224, 230, 0.15);
         }
+        /* TEMA: Bosque */
         .theme-ocean {
-            --bg-primary: #0c4a6e; --bg-secondary: #075985; --bg-tertiary: #0369a1;
-            --bg-interactive: #0284c7; --text-primary: #e0f2fe; --text-secondary: #bae6fd;
-            --accent-primary: #0ea5e9; --accent-hover: #38bdf8;
+            --bg-primary: #1f2c27; --bg-secondary: #2a3b34; --bg-tertiary: #4a5c53;
+            --bg-interactive: #6b8072; --text-primary: #d4e5d8; --text-secondary: #b8ccbe;
+            --accent-primary: #79dcaa; --accent-hover: #93ffc7;
+            --bg-glass: rgba(42, 59, 52, 0.65); --border-glass: rgba(212, 229, 216, 0.15);
         }
 
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
@@ -34,7 +40,30 @@
         .main-container { display: flex; flex-direction: column; height: 100%; width: 100%; max-width: 450px; margin: auto; background-color: var(--bg-primary); box-shadow: 0 0 20px rgba(0,0,0,0.5); }
         main { flex-grow: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; position: relative; }
 
-        .player-view-content, .controls-container, .tab-bar, .context-menu, .modal-content, #mini-player-bar { background-color: var(--bg-secondary); }
+        /* --- ✨ Efecto Vidrio (Glassmorphism) --- */
+        .glass-effect {
+            background-color: var(--bg-glass);
+            -webkit-backdrop-filter: blur(14px);
+            backdrop-filter: blur(14px);
+            border: 1px solid var(--border-glass);
+        }
+        .player-view-content, .controls-container, #mini-player-bar { background-color: transparent; }
+        .player-view-content > div, .controls-container-inner, .mini-player-inner {
+             border-radius: 0.75rem; /* 12px */
+        }
+        .tab-bar { 
+            background-color: var(--bg-glass);
+            -webkit-backdrop-filter: blur(14px);
+            backdrop-filter: blur(14px);
+            border-top: 1px solid var(--border-glass);
+        }
+        .context-menu, .modal-content {
+            background-color: var(--bg-glass) !important;
+            -webkit-backdrop-filter: blur(14px) !important;
+            backdrop-filter: blur(14px) !important;
+            border: 1px solid var(--border-glass) !important;
+        }
+
         h1, h2, h3, .text-primary { color: var(--text-primary); }
         .play-pause-btn, .action-btn { background-color: var(--accent-primary); color: var(--bg-primary); }
         .play-pause-btn:hover, .action-btn:hover { background-color: var(--accent-hover); }
@@ -42,37 +71,34 @@
         .tab.active { border-bottom-color: var(--accent-primary); }
         .tab.active svg { stroke: var(--accent-primary); }
         .hover-bg:hover { background-color: var(--bg-tertiary); }
-        .list-item:hover { background-color: var(--bg-tertiary); }
-        .list-item.playing { background-color: var(--bg-interactive); color: var(--accent-primary); }
+        .list-item:hover { background-color: var(--bg-interactive); }
+        .list-item.playing { background-color: var(--bg-interactive); color: var(--accent-primary); border-left: 3px solid var(--accent-primary); padding-left: calc(0.5rem - 3px); }
         
         #file-input { display: none; }
         input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; background: var(--bg-tertiary); border-radius: 5px; outline: none; cursor: pointer; }
         input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; background: var(--text-primary); border-radius: 50%; }
         
-        .modal-backdrop, .context-menu-backdrop { transition: opacity 0.3s ease-in-out; background-color: rgba(0,0,0,0.7); }
-        #prompt-input { color: var(--bg-primary); }
+        .modal-backdrop { transition: opacity 0.3s ease-in-out; background-color: rgba(0,0,0,0.7); }
+        #prompt-input { color: var(--text-primary); background-color: var(--bg-secondary); }
         
         .view { display: none; height: 100%; }
-        /* Corrección definitiva para el cambio de vistas */
-        .view.active { 
-            display: flex; /* Usar flex para que la vista activa se comporte como un bloque flexible */
-            flex-direction: column; /* Asegura que el contenido interno de las vistas se apile verticalmente */
-        }
-        /* Para las vistas que no son el reproductor, un display:block simple es suficiente si no tienen estructura flex interna */
-        #library-view.active, #playlists-view.active, #queue-view.active {
-            display: block;
-        }
+        .view.active { display: flex; flex-direction: column; }
+        #library-view.active, #playlists-view.active, #queue-view.active { display: block; }
         
         main::-webkit-scrollbar { width: 8px; }
         main::-webkit-scrollbar-track { background: var(--bg-secondary); }
         main::-webkit-scrollbar-thumb { background-color: var(--bg-interactive); border-radius: 10px; border: 2px solid var(--bg-secondary); }
         
-        #bottom-bar-wrapper { flex-shrink: 0; }
+        #bottom-bar-wrapper { flex-shrink: 0; position: relative; }
         #mini-player-bar {
-            transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out;
-            max-height: 0; overflow: hidden; padding-top: 0; padding-bottom: 0;
+            transition: transform 0.3s ease-in-out;
+            transform: translateY(100%);
+            position: absolute;
+            bottom: 60px; /* Altura aproximada del tab-bar */
+            left: 0.5rem; right: 0.5rem;
+            border-radius: 0.5rem;
         }
-        #mini-player-bar.visible { max-height: 100px; padding-top: 0.5rem; padding-bottom: 0.5rem; }
+        #mini-player-bar.visible { transform: translateY(0); }
 
         /* Estilos Ecualizador */
         .knob-container { display: flex; flex-direction: column; align-items: center; }
@@ -82,22 +108,26 @@
         }
         .knob::after { content: ''; position: absolute; width: 4px; height: 12px; background-color: var(--accent-primary); top: 8px; left: 50%; transform: translateX(-50%); border-radius: 2px; }
         .knob-label { font-size: 0.75rem; margin-top: 0.5rem; font-weight: 500; }
+        .eq-preset-btn { background-color: var(--bg-tertiary); color: var(--text-secondary); padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.8rem; transition: background-color 0.2s; }
+        .eq-preset-btn:hover { background-color: var(--bg-interactive); color: var(--text-primary); }
     </style>
 </head>
 <body>
     
     <div class="main-container">
-        <main class="p-4">
+        <main class="p-4 pb-0">
             <div id="player-view" class="view active justify-between h-full space-y-4">
-                <div class="flex-shrink-0 flex justify-between items-center">
+                 <div class="flex-shrink-0 flex justify-between items-center">
                     <button id="eq-btn" class="p-2 hover-bg rounded-full z-10 inline-block">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M2 14h4M10 8h4M18 16h4"/></svg>
                     </button>
+                    <h3 class="text-lg font-semibold text-primary">Reproduciendo</h3>
                     <button id="settings-btn" class="p-2 hover-bg rounded-full z-10 inline-block"></button>
                 </div>
-                <div class="player-view-content flex-grow flex flex-col justify-center items-center space-y-4 p-4 rounded-lg">
-                    <div class="relative aspect-square w-full max-w-xs rounded-xl shadow-lg overflow-hidden">
-                        <img id="album-art" src="https://placehold.co/400x400/1e293b/1e293b" alt="Carátula" class="w-full h-full object-cover">
+
+                <div class="player-view-content flex-grow flex flex-col justify-center items-center space-y-4 p-4">
+                    <div class="relative aspect-square w-full max-w-xs rounded-xl shadow-lg overflow-hidden glass-effect">
+                        <img id="album-art" src="https://placehold.co/400x400/1a1b26/1a1b26" alt="Carátula" class="w-full h-full object-cover">
                         <canvas id="visualizer" class="absolute inset-0 w-full h-full opacity-60"></canvas>
                     </div>
                     <div class="text-center w-full px-4">
@@ -105,22 +135,25 @@
                         <p id="song-artist" class="text-md truncate">Carga tu música en la Biblioteca</p>
                     </div>
                 </div>
-                <div class="controls-container flex-shrink-0 space-y-4 p-4 rounded-lg">
-                    <div class="space-y-2">
-                        <input type="range" id="progress-bar" value="0" class="w-full">
-                        <div class="flex justify-between text-xs font-mono"><span id="current-time">0:00</span><span id="duration">0:00</span></div>
-                    </div>
-                    <div class="flex items-center justify-around">
-                        <button id="shuffle-btn" class="p-2 control-btn"></button>
-                        <button id="prev-btn" class="p-2"></button>
-                        <button id="play-pause-btn" class="play-pause-btn w-16 h-16 flex items-center justify-center rounded-full shadow-lg"></button>
-                        <button id="next-btn" class="p-2"></button>
-                        <button id="repeat-btn" class="p-2 control-btn"></button>
-                    </div>
-                    <div class="flex items-center justify-center space-x-2">
-                        <svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3z"></path></svg>
-                        <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="1" class="w-1/2">
-                        <svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77zM16.5 12c0-1.77-1-3.29-2.5-4.03v8.05c1.5-0.73 2.5-2.25 2.5-4.02zM3 9v6h4l5 5V4L7 9H3z"></path></svg>
+                
+                <div class="controls-container flex-shrink-0 space-y-4 p-4">
+                     <div class="controls-container-inner space-y-4 p-4 glass-effect">
+                        <div class="space-y-2">
+                            <input type="range" id="progress-bar" value="0" class="w-full">
+                            <div class="flex justify-between text-xs font-mono"><span id="current-time">0:00</span><span id="duration">0:00</span></div>
+                        </div>
+                        <div class="flex items-center justify-around">
+                            <button id="shuffle-btn" class="p-2 control-btn"></button>
+                            <button id="prev-btn" class="p-2"></button>
+                            <button id="play-pause-btn" class="play-pause-btn w-16 h-16 flex items-center justify-center rounded-full shadow-lg"></button>
+                            <button id="next-btn" class="p-2"></button>
+                            <button id="repeat-btn" class="p-2 control-btn"></button>
+                        </div>
+                        <div class="flex items-center justify-center space-x-2">
+                            <svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3z"></path></svg>
+                            <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="1" class="w-1/2">
+                            <svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77zM16.5 12c0-1.77-1-3.29-2.5-4.03v8.05c1.5-0.73 2.5-2.25 2.5-4.02zM3 9v6h4l5 5V4L7 9H3z"></path></svg>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -145,13 +178,15 @@
         </main>
 
         <div id="bottom-bar-wrapper">
-            <div id="mini-player-bar" class="px-2 flex items-center space-x-3 cursor-pointer">
-                <img id="mini-album-art" src="https://placehold.co/96x96/1e293b/1e293b" alt="Mini Carátula" class="w-12 h-12 rounded-md flex-shrink-0 object-cover">
-                <div class="flex-grow truncate">
-                    <p id="mini-song-title" class="font-semibold text-primary truncate">Sin música</p>
-                    <p id="mini-song-artist" class="text-sm truncate">Selecciona una canción</p>
+             <div id="mini-player-bar" class="px-2 glass-effect cursor-pointer">
+                <div class="mini-player-inner p-2 flex items-center space-x-3">
+                    <img id="mini-album-art" src="https://placehold.co/96x96/1a1b26/1a1b26" alt="Mini Carátula" class="w-12 h-12 rounded-md flex-shrink-0 object-cover">
+                    <div class="flex-grow truncate">
+                        <p id="mini-song-title" class="font-semibold text-primary truncate">Sin música</p>
+                        <p id="mini-song-artist" class="text-sm truncate">Selecciona una canción</p>
+                    </div>
+                    <button id="mini-play-pause-btn" class="play-pause-btn w-12 h-12 flex items-center justify-center rounded-full shadow-lg flex-shrink-0"></button>
                 </div>
-                <button id="mini-play-pause-btn" class="play-pause-btn w-12 h-12 flex items-center justify-center rounded-full shadow-lg flex-shrink-0"></button>
             </div>
             <nav class="tab-bar flex justify-around p-2">
                 <button class="tab active flex flex-col items-center text-xs w-full py-1 border-b-2" data-view="player-view"></button>
@@ -163,7 +198,7 @@
     </div>
 
     <div id="context-menu-backdrop" class="context-menu-backdrop fixed inset-0 z-40 hidden"></div>
-    <div id="context-menu" class="context-menu fixed z-50 hidden bg-tertiary rounded-lg shadow-xl p-2 text-sm w-48 text-primary"></div>
+    <div id="context-menu" class="context-menu fixed z-50 hidden rounded-lg shadow-xl p-2 text-sm w-48 text-primary"></div>
     <div id="modal-container" class="fixed inset-0 z-50 hidden items-center justify-center p-4"></div>
     
     <template id="song-item-template">
@@ -307,18 +342,31 @@
         }
         function saveState() {
             const stateToSave = {
-                library: state.library.map(({url, ...rest}) => rest), playlists: state.playlists,
-                currentSongId: state.currentSongId, volume: state.volume, settings: state.settings,
-                isShuffle: state.isShuffle, repeatMode: state.repeatMode
+                library: state.library.map(song => {
+                    const { url, ...songToSave } = song; // Excluye la URL del blob que no es persistente
+                    return songToSave;
+                }), 
+                playlists: state.playlists, currentSongId: state.currentSongId, volume: state.volume, 
+                settings: state.settings, isShuffle: state.isShuffle, repeatMode: state.repeatMode
             };
             localStorage.setItem('musicPlayerState', JSON.stringify(stateToSave));
         }
+        // ✅ CORRECCIÓN: Lógica de carga robusta para la biblioteca
         function loadState() {
             const savedState = localStorage.getItem('musicPlayerState');
             if (savedState) {
                 const parsed = JSON.parse(savedState);
-                if (parsed.library) { parsed.library.forEach(song => { const blob = base64toBlob(song.data); song.url = URL.createObjectURL(blob); }); }
-                Object.assign(state, parsed);
+                const { library, ...restOfState } = parsed;
+                
+                if (library) {
+                    state.library = library.map(song => {
+                        if (!song.data) return null;
+                        const blob = base64toBlob(song.data);
+                        return { ...song, url: URL.createObjectURL(blob) };
+                    }).filter(Boolean); // Filtra cualquier canción que no se pudo cargar
+                }
+                
+                Object.assign(state, restOfState);
             }
             setContext('library');
         }
@@ -327,7 +375,8 @@
             const item = dom.songItemTemplate.content.cloneNode(true).querySelector('.list-item');
             item.dataset.songId = song.id;
             item.querySelector('[data-title]').textContent = song.title; item.querySelector('[data-artist]').textContent = song.artist;
-            item.querySelector('[data-art-src]').src = song.art || 'https://placehold.co/96x96/1e293b/1e293b';
+            const artElement = item.querySelector('[data-art-src]');
+            artElement.src = song.art || 'https://placehold.co/96x96/1a1b26/1a1b26';
             item.addEventListener('click', () => {
                 const contextList = item.closest('ul');
                 if (contextList && contextList.dataset.context === 'playlist') { playSongFromContext(song.id, 'playlist', contextList.dataset.playlistId); }
@@ -355,14 +404,14 @@
         }
         function updatePlayingStatusInLists() { document.querySelectorAll('.list-item').forEach(item => item.classList.toggle('playing', item.dataset.songId === state.currentSongId)); }
         function updatePlayerUI(song) {
-            const defaultArt = 'https://placehold.co/400x400/1e293b/1e293b';
+            const defaultArt = 'https://placehold.co/400x400/1a1b26/1a1b26';
             if (!song) {
                 dom.songTitle.textContent = 'Bienvenido'; dom.songArtist.textContent = 'Carga tu música'; dom.albumArt.src = defaultArt;
                 updateMiniPlayerVisibility(); return;
             }
             dom.songTitle.textContent = song.title; dom.songArtist.textContent = song.artist;
             dom.albumArt.src = song.art || defaultArt; dom.miniSongTitle.textContent = song.title;
-            dom.miniSongArtist.textContent = song.artist; dom.miniAlbumArt.src = song.art || 'https://placehold.co/96x96/1e293b/1e293b';
+            dom.miniSongArtist.textContent = song.artist; dom.miniAlbumArt.src = song.art || 'https://placehold.co/96x96/1a1b26/1a1b26';
             updateMiniPlayerVisibility();
         }
         function updateProgressUI(currentTime, duration) {
@@ -389,7 +438,7 @@
             dom.nextBtn.addEventListener('click', playNextSong); dom.prevBtn.addEventListener('click', playPrevSong);
             dom.shuffleBtn.addEventListener('click', toggleShuffle); dom.repeatBtn.addEventListener('click', cycleRepeatMode);
             dom.progressBar.addEventListener('input', (e) => audioManager.seek((e.target.value / 100) * (audio1.duration || audio2.duration || 0)));
-            dom.volumeSlider.addEventListener('input', (e) => { state.volume = parseFloat(e.target.value); audioManager.setVolume(state.volume); });
+            dom.volumeSlider.addEventListener('input', (e) => { state.volume = parseFloat(e.target.value); if(audioContext) audioManager.setVolume(state.volume); });
             dom.volumeSlider.addEventListener('change', saveState);
             dom.addFilesBtn.addEventListener('click', () => dom.fileInput.click());
             dom.fileInput.addEventListener('change', handleFileSelect);
@@ -409,21 +458,25 @@
         }
         async function handleFileSelect(event) {
             const files = Array.from(event.target.files); if (files.length === 0) return;
+            showModal(`<div class="text-center text-primary">Cargando ${files.length} canci&oacute;n(es)...</div>`);
             const wasEmpty = !state.currentSongId && state.library.length === 0;
-            const newSongs = await Promise.all(files.map(processFile)); state.library.push(...newSongs);
+            const newSongs = await Promise.all(files.map(processFile)); 
+            state.library.push(...newSongs);
             renderLibrary(); setContext('library'); saveState();
+            closeModal();
             if (wasEmpty && newSongs.length > 0) playSongFromContext(newSongs[0].id, 'library');
         }
         async function processFile(file) {
             return new Promise((resolve) => {
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    const base64String = arrayBufferToBase64(e.target.result); const blob = base64toBlob(base64String);
+                    const data = arrayBufferToBase64(e.target.result); 
+                    const blob = base64toBlob(data);
                     window.jsmediatags.read(file, {
                         onSuccess: (tag) => {
                             const { title, artist, album, picture } = tag.tags;
-                            resolve({ id: self.crypto.randomUUID(), title: title || file.name.replace(/\.[^/.]+$/, ""), artist: artist || 'Desconocido', album: album || 'Desconocido', art: picture ? `data:${picture.format};base64,${window.btoa(picture.data.reduce((acc, byte) => acc + String.fromCharCode(byte), ''))}` : null, data: base64String, url: URL.createObjectURL(blob) });
-                        }, onError: () => resolve({ id: self.crypto.randomUUID(), title: file.name.replace(/\.[^/.]+$/, ""), artist: 'Desconocido', album: 'Desconocido', art: null, data: base64String, url: URL.createObjectURL(blob) })
+                            resolve({ id: self.crypto.randomUUID(), title: title || file.name.replace(/\.[^/.]+$/, ""), artist: artist || 'Desconocido', album: album || 'Desconocido', art: picture ? `data:${picture.format};base64,${window.btoa(picture.data.reduce((acc, byte) => acc + String.fromCharCode(byte), ''))}` : null, data, url: URL.createObjectURL(blob) });
+                        }, onError: () => resolve({ id: self.crypto.randomUUID(), title: file.name.replace(/\.[^/.]+$/, ""), artist: 'Desconocido', album: 'Desconocido', art: null, data, url: URL.createObjectURL(blob) })
                     });
                 }; reader.readAsArrayBuffer(file);
             });
@@ -483,16 +536,16 @@
         function showModal(content) { dom.modalContainer.innerHTML = `<div class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-70 opacity-0 transition-opacity"><div class="modal-content w-full max-w-sm rounded-xl shadow-2xl p-6 space-y-4">${content}</div></div>`; dom.modalContainer.classList.remove('hidden'); const backdrop = dom.modalContainer.querySelector('.modal-backdrop'); setTimeout(() => backdrop.classList.remove('opacity-0'), 10); return backdrop; }
         function closeModal() { const backdrop = dom.modalContainer.querySelector('.modal-backdrop'); if (backdrop) { backdrop.classList.add('opacity-0'); setTimeout(() => { dom.modalContainer.classList.add('hidden'); dom.modalContainer.innerHTML = ''; }, 300); } }
         function openAddToPlaylistModal(songId) { let playlistItems = state.playlists.length > 0 ? state.playlists.map(p => `<li class="list-item p-3 rounded-lg cursor-pointer" data-id="${p.id}">${p.name}</li>`).join('') : `<li class="text-center text-secondary p-4">No hay playlists.</li>`; const modalContent = `<h2 class="text-xl font-bold text-primary">Añadir a...</h2><ul class="max-h-60 overflow-y-auto space-y-1">${playlistItems}</ul><button id="close-modal-btn" class="mt-4 w-full bg-tertiary text-primary py-2 rounded-lg hover-bg">Cerrar</button>`; const modal = showModal(modalContent); modal.querySelectorAll('.list-item').forEach(item => { item.addEventListener('click', () => { addSongToPlaylist(songId, item.dataset.id); closeModal(); }); }); modal.querySelector('#close-modal-btn').addEventListener('click', closeModal); modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); }); }
-        function showPromptModal(title, label, callback, defaultValue = '') { const modalContent = `<h2 class="text-xl font-bold text-primary">${title}</h2><label for="prompt-input" class="text-sm">${label}</label><input id="prompt-input" type="text" value="${defaultValue}" class="w-full p-2 rounded bg-tertiary text-primary border border-interactive focus:outline-none focus:ring-2 focus:ring-accent-primary"><div class="flex justify-end space-x-2 mt-4"><button id="prompt-cancel" class="bg-tertiary px-4 py-2 rounded-lg">Cancelar</button><button id="prompt-ok" class="action-btn px-4 py-2 rounded-lg">Aceptar</button></div>`; const modal = showModal(modalContent); const input = modal.querySelector('#prompt-input'); input.focus(); input.select(); const handleOk = () => { callback(input.value); closeModal(); }; modal.querySelector('#prompt-ok').addEventListener('click', handleOk); input.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleOk(); }); modal.querySelector('#prompt-cancel').addEventListener('click', closeModal); modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); }); }
+        function showPromptModal(title, label, callback, defaultValue = '') { const modalContent = `<h2 class="text-xl font-bold text-primary">${title}</h2><label for="prompt-input" class="text-sm">${label}</label><input id="prompt-input" type="text" value="${defaultValue}" class="w-full p-2 rounded border focus:outline-none focus:ring-2 focus:ring-accent-primary"><div class="flex justify-end space-x-2 mt-4"><button id="prompt-cancel" class="bg-tertiary px-4 py-2 rounded-lg">Cancelar</button><button id="prompt-ok" class="action-btn px-4 py-2 rounded-lg">Aceptar</button></div>`; const modal = showModal(modalContent); const input = modal.querySelector('#prompt-input'); input.focus(); input.select(); const handleOk = () => { callback(input.value); closeModal(); }; modal.querySelector('#prompt-ok').addEventListener('click', handleOk); input.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleOk(); }); modal.querySelector('#prompt-cancel').addEventListener('click', closeModal); modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); }); }
         function showConfirmModal(title, message, onConfirm) { const modalContent = `<h2 class="text-xl font-bold text-primary">${title}</h2><p class="text-sm">${message}</p><div class="flex justify-end space-x-2 mt-4"><button id="confirm-cancel" class="bg-tertiary px-4 py-2 rounded-lg">Cancelar</button><button id="confirm-ok" class="bg-red-600 text-white px-4 py-2 rounded-lg">Confirmar</button></div>`; const modal = showModal(modalContent); modal.querySelector('#confirm-ok').addEventListener('click', () => { onConfirm(); closeModal(); }); modal.querySelector('#confirm-cancel').addEventListener('click', closeModal); modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); }); }
         function showContextMenu(x, y, items) { dom.contextMenu.innerHTML = ''; items.forEach(item => { const li = document.createElement('li'); li.textContent = item.label; li.className = 'px-4 py-2 hover-bg rounded cursor-pointer'; li.addEventListener('click', () => { item.action(); hideContextMenu(); }); dom.contextMenu.appendChild(li); }); const menuWidth = dom.contextMenu.offsetWidth; const menuHeight = dom.contextMenu.offsetHeight; const correctedX = (x + menuWidth > window.innerWidth) ? window.innerWidth - menuWidth - 10 : x; const correctedY = (y + menuHeight > window.innerHeight) ? window.innerHeight - menuHeight - 10 : y; dom.contextMenu.style.left = `${correctedX}px`; dom.contextMenu.style.top = `${correctedY}px`; dom.contextMenu.classList.remove('hidden'); dom.contextMenuBackdrop.classList.remove('hidden'); }
         function hideContextMenu() { dom.contextMenu.classList.add('hidden'); dom.contextMenuBackdrop.classList.add('hidden'); }
-        function openSettingsModal() { const modalContent = `<div class="flex justify-between items-center mb-2"><h2 class="text-2xl font-bold">Configuración</h2><button id="close-settings-btn" class="p-2 rounded-full hover-bg text-2xl leading-none">&times;</button></div><div class="accordion-item"><button class="accordion-header"><span>Transiciones</span><span class="accordion-icon">▼</span></button><div class="accordion-content"><div class="flex items-center justify-between py-2"><label for="crossfade-toggle" class="text-sm">Crossfade</label><div class="flex items-center space-x-3"><span id="crossfade-duration-label" class="text-xs w-12 text-center"></span><input type="range" id="crossfade-duration-slider" min="1" max="10" class="w-24"><input type="checkbox" id="crossfade-toggle" class="form-checkbox h-5 w-5 rounded bg-slate-700 border-slate-600 text-accent-primary focus:ring-accent-primary"></div></div></div></div><div class="accordion-item"><button class="accordion-header"><span>Temas</span><span class="accordion-icon">▼</span></button><div class="accordion-content"><div id="theme-selector" class="flex items-center space-x-4 py-2"><button data-theme="default" class="theme-btn w-8 h-8 rounded-full bg-[#0f172a] border-2 border-slate-500"></button><button data-theme="sunset" class="theme-btn w-8 h-8 rounded-full bg-[#4c1d95] border-2 border-slate-500"></button><button data-theme="ocean" class="theme-btn w-8 h-8 rounded-full bg-[#0c4a6e] border-2 border-slate-500"></button></div></div></div>`; const modal = showModal(modalContent); modal.querySelector('#close-settings-btn').addEventListener('click', closeModal); modal.addEventListener('click', (e) => { if(e.target === modal) closeModal(); }); const crossfadeToggle = modal.querySelector('#crossfade-toggle'); const crossfadeSlider = modal.querySelector('#crossfade-duration-slider'); const crossfadeLabel = modal.querySelector('#crossfade-duration-label'); crossfadeToggle.checked = state.settings.crossfadeEnabled; crossfadeSlider.value = state.settings.crossfadeDuration; crossfadeLabel.textContent = `${state.settings.crossfadeDuration}s`; crossfadeToggle.addEventListener('change', (e) => { state.settings.crossfadeEnabled = e.target.checked; saveState(); }); crossfadeSlider.addEventListener('input', (e) => { state.settings.crossfadeDuration = parseInt(e.target.value); crossfadeLabel.textContent = `${state.settings.crossfadeDuration}s`; }); crossfadeSlider.addEventListener('change', saveState); modal.querySelectorAll('.theme-btn').forEach(btn => btn.addEventListener('click', (e) => { state.settings.theme = e.currentTarget.dataset.theme; applyTheme(); saveState(); })); modal.querySelectorAll('.accordion-header').forEach(header => header.addEventListener('click', () => { header.classList.toggle('active'); header.nextElementSibling.classList.toggle('open'); })); }
+        function openSettingsModal() { const modalContent = `<div class="flex justify-between items-center mb-2"><h2 class="text-2xl font-bold">Configuración</h2><button id="close-settings-btn" class="p-2 rounded-full hover-bg text-2xl leading-none">&times;</button></div><div class="space-y-2"><div class="flex items-center justify-between py-2"><label for="crossfade-toggle" class="text-sm">Crossfade</label><div class="flex items-center space-x-3"><span id="crossfade-duration-label" class="text-xs w-12 text-center"></span><input type="range" id="crossfade-duration-slider" min="1" max="10" class="w-24"><input type="checkbox" id="crossfade-toggle" class="form-checkbox h-5 w-5 rounded bg-slate-700 border-slate-600 text-accent-primary focus:ring-accent-primary"></div></div> <div class="py-2"> <label class="text-sm">Tema</label> <div id="theme-selector" class="flex items-center space-x-4 py-2"><button data-theme="default" class="theme-btn w-8 h-8 rounded-full bg-[#1a1b26] border-2 border-slate-500"></button><button data-theme="sunset" class="theme-btn w-8 h-8 rounded-full bg-[#2d1d2b] border-2 border-slate-500"></button><button data-theme="ocean" class="theme-btn w-8 h-8 rounded-full bg-[#1f2c27] border-2 border-slate-500"></button></div></div></div>`; const modal = showModal(modalContent); modal.querySelector('#close-settings-btn').addEventListener('click', closeModal); modal.addEventListener('click', (e) => { if(e.target === modal) closeModal(); }); const crossfadeToggle = modal.querySelector('#crossfade-toggle'); const crossfadeSlider = modal.querySelector('#crossfade-duration-slider'); const crossfadeLabel = modal.querySelector('#crossfade-duration-label'); crossfadeToggle.checked = state.settings.crossfadeEnabled; crossfadeSlider.value = state.settings.crossfadeDuration; crossfadeLabel.textContent = `${state.settings.crossfadeDuration}s`; crossfadeToggle.addEventListener('change', (e) => { state.settings.crossfadeEnabled = e.target.checked; saveState(); }); crossfadeSlider.addEventListener('input', (e) => { state.settings.crossfadeDuration = parseInt(e.target.value); crossfadeLabel.textContent = `${state.settings.crossfadeDuration}s`; }); crossfadeSlider.addEventListener('change', saveState); modal.querySelectorAll('.theme-btn').forEach(btn => btn.addEventListener('click', (e) => { state.settings.theme = e.currentTarget.dataset.theme; applyTheme(); saveState(); })); }
         function applyTheme(){ dom.body.className = `theme-${state.settings.theme || 'default'}`; }
         function drawVisualizer() { if (!state.isPlaying || !analyser) { dom.canvasCtx.clearRect(0, 0, dom.visualizerCanvas.width, dom.visualizerCanvas.height); return; } requestAnimationFrame(drawVisualizer); analyser.getByteFrequencyData(dataArray); dom.canvasCtx.fillStyle = 'rgba(0, 0, 0, 0.1)'; dom.canvasCtx.fillRect(0, 0, dom.visualizerCanvas.width, dom.visualizerCanvas.height); const barWidth = (dom.visualizerCanvas.width / dataArray.length) * 2.5; let x = 0; for (let i = 0; i < dataArray.length; i++) { const barHeight = dataArray[i] / 2; dom.canvasCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent-primary') + '99'; dom.canvasCtx.fillRect(x, dom.visualizerCanvas.height - barHeight, barWidth, barHeight); x += barWidth + 1; } }
         function formatTime(s) { const m=Math.floor(s/60),c=Math.floor(s%60); return isNaN(m)?'0:00':`${m}:${c<10?'0':''}${c}`; }
         function arrayBufferToBase64(b) { let s='';new Uint8Array(b).forEach(v=>s+=String.fromCharCode(v));return window.btoa(s); }
-        function base64toBlob(b) { try { const s=atob(b),a=[];for(let i=0;i<s.length;i+=512)a.push(new Uint8Array([...s.slice(i,i+512)].map(c=>c.charCodeAt(0))));return new Blob(a,{type:'audio/mpeg'});}catch(e){return new Blob([]);}}
+        function base64toBlob(base64, contentType = 'audio/mpeg') { try { const byteCharacters=atob(base64); const byteArrays=[]; for(let offset=0; offset < byteCharacters.length; offset+=512){ const slice = byteCharacters.slice(offset, offset + 512); const byteNumbers = new Array(slice.length); for (let i=0; i < slice.length; i++){ byteNumbers[i] = slice.charCodeAt(i); } const byteArray = new Uint8Array(byteNumbers); byteArrays.push(byteArray); } return new Blob(byteArrays, {type: contentType}); } catch(e) { console.error("Error al convertir base64 a Blob", e); return new Blob([]); } }
         function updateMediaSession(s) { if(!('mediaSession'in navigator))return;navigator.mediaSession.metadata=new MediaMetadata({title:s.title,artist:s.artist,album:s.album,artwork:[{src:s.art||''}]});navigator.mediaSession.setActionHandler('play',togglePlayPause);navigator.mediaSession.setActionHandler('pause',togglePlayPause);navigator.mediaSession.setActionHandler('nexttrack',playNextSong);navigator.mediaSession.setActionHandler('previoustrack',playPrevSong);}
         function toggleShuffle() { state.isShuffle = !state.isShuffle; updateControlButtonsUI(); saveState(); }
         function cycleRepeatMode() { const modes = ['none', 'all', 'one']; state.repeatMode = modes[(modes.indexOf(state.repeatMode) + 1) % modes.length]; updateControlButtonsUI(); saveState(); }
@@ -504,7 +557,12 @@
             if (state.repeatMode === 'one') { repeatIcon.innerHTML = '<polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path><path d="M11 5h2m-1-2v2m-1 2V5"></path>'; }
             else { repeatIcon.innerHTML = '<polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path>'; }
         }
+        // ✅ CORRECCIÓN: Modal del ecualizador funcional y con preajustes
         function openEQModal() {
+            const presets = {
+                'Pop': { bass: 4, mids: -2, treble: 5 }, 'Rock': { bass: 5, mids: 1, treble: 4 },
+                'Jazz': { bass: 4, mids: 3, treble: 3 }, 'Clásica': { bass: -2, mids: 2, treble: 1 }
+            };
             const modalContent = `
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-2xl font-bold">Ecualizador</h2>
@@ -513,32 +571,55 @@
                 <div class="flex justify-around items-center p-4">
                     ${['bass', 'mids', 'treble'].map(type => `
                         <div class="knob-container">
-                            <div class="knob" data-type="${type}" style="transform: rotate(${((state.settings.eq[type] + 20) / 40) * 135}deg)"></div>
+                            <div class="knob" data-type="${type}" style="transform: rotate(${((state.settings.eq[type] + 20) / 40 * 270) - 135}deg)"></div>
                             <span class="knob-label">${type.charAt(0).toUpperCase() + type.slice(1)}</span>
                         </div>
                     `).join('')}
+                </div>
+                <div class="flex flex-wrap justify-center gap-2 mt-2">
+                    ${Object.keys(presets).map(p => `<button class="eq-preset-btn" data-preset="${p}">${p}</button>`).join('')}
                 </div>`;
             const modal = showModal(modalContent);
+
+            const applyPreset = (presetName) => {
+                state.settings.eq = { ...presets[presetName] };
+                applyEQ();
+                saveState();
+                modal.querySelectorAll('.knob').forEach(knob => {
+                    const knobType = knob.dataset.type;
+                    const rotation = ((state.settings.eq[knobType] + 20) / 40 * 270) - 135;
+                    knob.style.transform = `rotate(${rotation}deg)`;
+                });
+            };
+            
             modal.querySelector('#close-eq-btn').addEventListener('click', closeModal);
+            modal.querySelectorAll('.eq-preset-btn').forEach(btn => btn.addEventListener('click', () => applyPreset(btn.dataset.preset)));
             modal.querySelectorAll('.knob').forEach(knob => {
                 let isDragging = false; const knobType = knob.dataset.type;
                 knob.addEventListener('mousedown', (e) => { isDragging = true; e.preventDefault(); });
-                window.addEventListener('mouseup', () => { if(isDragging) { isDragging = false; saveState(); } });
+                const endDrag = () => { if(isDragging) { isDragging = false; saveState(); }};
+                window.addEventListener('mouseup', endDrag, { once: true });
+                window.addEventListener('mouseleave', endDrag, { once: true });
                 window.addEventListener('mousemove', (e) => {
                     if (!isDragging) return;
                     const rect = knob.getBoundingClientRect();
                     const centerX = rect.left + rect.width / 2; const centerY = rect.top + rect.height / 2;
-                    const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI) + 90;
-                    let rotation = Math.round(angle);
-                    if (rotation < 0) rotation += 360;
-                    if (rotation > 270 && rotation < 360) rotation = 0; if (rotation > 135) rotation = 135;
+                    let angle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI) + 90;
+                    if (angle < 0) angle += 360;
                     
-                    const value = (rotation / 135) * 40 - 20;
+                    let rotation = Math.max(-135, Math.min(135, angle - 180));
+                    
+                    const value = Math.round((rotation + 135) / 270 * 40 - 20);
                     state.settings.eq[knobType] = value;
                     knob.style.transform = `rotate(${rotation}deg)`;
                     applyEQ();
                 });
-                knob.addEventListener('dblclick', () => { knob.style.transform = `rotate(${((0 + 20) / 40) * 135}deg)`; state.settings.eq[knobType] = 0; applyEQ(); saveState(); });
+                knob.addEventListener('dblclick', () => { 
+                    state.settings.eq[knobType] = 0;
+                    knob.style.transform = `rotate(0deg)`;
+                    applyEQ(); 
+                    saveState(); 
+                });
             });
         }
         function applyEQ() { if (!audioContext) return; bassFilter.gain.value = state.settings.eq.bass; midsFilter.gain.value = state.settings.eq.mids; trebleFilter.gain.value = state.settings.eq.treble; }
