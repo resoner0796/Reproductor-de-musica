@@ -270,7 +270,7 @@
             let currentAudio = audio1; let standbyAudio = audio2; let fadeInterval = null;
             function play(song, startTime = 0) {
                 if (!song) return; if (!audioContext) setupWebAudioAPI();
-                stopFade(); currentAudio.src = song.url; currentAudio.currentTime = startTime; masterGain.gain.value = state.volume;
+                stopFade(); currentAudio.src = song.url; currentAudio.currentTime = startTime; if(masterGain) masterGain.gain.value = state.volume;
                 currentAudio.play().then(() => { state.isPlaying = true; updateUIonPlayPause(); preloadNext(); drawVisualizer(); }).catch(e => console.error("Error al reproducir:", e));
             }
             function pause() { currentAudio.pause(); state.isPlaying = false; updateUIonPlayPause(); }
@@ -297,7 +297,7 @@
                 audio.addEventListener('timeupdate', () => { if (audio === currentAudio) updateProgressUI(audio.currentTime, audio.duration); });
                 audio.addEventListener('ended', () => { if (audio === currentAudio) handleTrackEnd(); });
             });
-            return { play, pause, resume, crossfadeTo, seek: (time) => currentAudio.currentTime = time, setVolume: (vol) => { masterGain.gain.value = vol; } };
+            return { play, pause, resume, crossfadeTo, seek: (time) => currentAudio.currentTime = time, setVolume: (vol) => { if (masterGain) masterGain.gain.value = vol; } };
         })();
         
         function getSongById(id) { return state.library.find(song => song.id === id); }
@@ -305,7 +305,7 @@
             if (state.isShuffle) {
                 if (state.contextQueue.length <= 1) return (state.repeatMode !== 'none') ? getSongById(state.currentSongId) : null;
                 let randomIndex;
-                do { randomIndex = Math.floor(Math.random() * state.contextQueue.length); } while (state.contextQueue[randomIndex] === state.currentSongId);
+                do { randomIndex = Math.floor(Math.random() * state.contextQueue.length); } while (state.contextQueue.length > 1 && state.contextQueue[randomIndex] === state.currentSongId);
                 state.contextIndex = randomIndex; return getSongById(state.contextQueue[randomIndex]);
             } else {
                 let nextIndex = state.contextIndex + 1;
@@ -343,7 +343,7 @@
         function saveState() {
             const stateToSave = {
                 library: state.library.map(song => {
-                    const { url, ...songToSave } = song; // Excluye la URL del blob que no es persistente
+                    const { url, ...songToSave } = song; 
                     return songToSave;
                 }), 
                 playlists: state.playlists, currentSongId: state.currentSongId, volume: state.volume, 
@@ -351,21 +351,18 @@
             };
             localStorage.setItem('musicPlayerState', JSON.stringify(stateToSave));
         }
-        // ✅ CORRECCIÓN: Lógica de carga robusta para la biblioteca
         function loadState() {
             const savedState = localStorage.getItem('musicPlayerState');
             if (savedState) {
                 const parsed = JSON.parse(savedState);
                 const { library, ...restOfState } = parsed;
-                
                 if (library) {
                     state.library = library.map(song => {
                         if (!song.data) return null;
                         const blob = base64toBlob(song.data);
                         return { ...song, url: URL.createObjectURL(blob) };
-                    }).filter(Boolean); // Filtra cualquier canción que no se pudo cargar
+                    }).filter(Boolean);
                 }
-                
                 Object.assign(state, restOfState);
             }
             setContext('library');
@@ -426,6 +423,7 @@
             });
         }
         function togglePlayPause() {
+            if (!audioContext) setupWebAudioAPI();
             if (audioContext && audioContext.state === 'suspended') { audioContext.resume(); }
             if (state.isPlaying) audioManager.pause(); else if (state.currentSongId) audioManager.resume();
             else if (state.library.length > 0) playSongFromContext(state.library[0].id, 'library');
@@ -438,7 +436,7 @@
             dom.nextBtn.addEventListener('click', playNextSong); dom.prevBtn.addEventListener('click', playPrevSong);
             dom.shuffleBtn.addEventListener('click', toggleShuffle); dom.repeatBtn.addEventListener('click', cycleRepeatMode);
             dom.progressBar.addEventListener('input', (e) => audioManager.seek((e.target.value / 100) * (audio1.duration || audio2.duration || 0)));
-            dom.volumeSlider.addEventListener('input', (e) => { state.volume = parseFloat(e.target.value); if(audioContext) audioManager.setVolume(state.volume); });
+            dom.volumeSlider.addEventListener('input', (e) => { state.volume = parseFloat(e.target.value); audioManager.setVolume(state.volume); });
             dom.volumeSlider.addEventListener('change', saveState);
             dom.addFilesBtn.addEventListener('click', () => dom.fileInput.click());
             dom.fileInput.addEventListener('change', handleFileSelect);
@@ -456,18 +454,31 @@
             dom.tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.view === viewId));
             updateMiniPlayerVisibility();
         }
+        // ✅ CORRECCIÓN: Modal de carga robusto
         async function handleFileSelect(event) {
-            const files = Array.from(event.target.files); if (files.length === 0) return;
+            const files = Array.from(event.target.files); 
+            if (files.length === 0) return;
+            
             showModal(`<div class="text-center text-primary">Cargando ${files.length} canci&oacute;n(es)...</div>`);
-            const wasEmpty = !state.currentSongId && state.library.length === 0;
-            const newSongs = await Promise.all(files.map(processFile)); 
-            state.library.push(...newSongs);
-            renderLibrary(); setContext('library'); saveState();
-            closeModal();
-            if (wasEmpty && newSongs.length > 0) playSongFromContext(newSongs[0].id, 'library');
+            
+            try {
+                const wasEmpty = !state.currentSongId && state.library.length === 0;
+                const newSongs = await Promise.all(files.map(processFile)); 
+                state.library.push(...newSongs);
+                renderLibrary(); 
+                setContext('library'); 
+                saveState();
+                if (wasEmpty && newSongs.length > 0) {
+                    playSongFromContext(newSongs[0].id, 'library');
+                }
+            } catch (error) {
+                console.error("Error procesando archivos:", error);
+            } finally {
+                closeModal();
+            }
         }
         async function processFile(file) {
-            return new Promise((resolve) => {
+            return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const data = arrayBufferToBase64(e.target.result); 
@@ -476,9 +487,14 @@
                         onSuccess: (tag) => {
                             const { title, artist, album, picture } = tag.tags;
                             resolve({ id: self.crypto.randomUUID(), title: title || file.name.replace(/\.[^/.]+$/, ""), artist: artist || 'Desconocido', album: album || 'Desconocido', art: picture ? `data:${picture.format};base64,${window.btoa(picture.data.reduce((acc, byte) => acc + String.fromCharCode(byte), ''))}` : null, data, url: URL.createObjectURL(blob) });
-                        }, onError: () => resolve({ id: self.crypto.randomUUID(), title: file.name.replace(/\.[^/.]+$/, ""), artist: 'Desconocido', album: 'Desconocido', art: null, data, url: URL.createObjectURL(blob) })
+                        }, onError: (error) => {
+                             console.warn("jsmediatags error:", error.type);
+                             resolve({ id: self.crypto.randomUUID(), title: file.name.replace(/\.[^/.]+$/, ""), artist: 'Desconocido', album: 'Desconocido', art: null, data, url: URL.createObjectURL(blob) })
+                        }
                     });
-                }; reader.readAsArrayBuffer(file);
+                }; 
+                reader.onerror = (error) => reject(error);
+                reader.readAsArrayBuffer(file);
             });
         }
         function setContext(type, id = null) {
@@ -557,7 +573,7 @@
             if (state.repeatMode === 'one') { repeatIcon.innerHTML = '<polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path><path d="M11 5h2m-1-2v2m-1 2V5"></path>'; }
             else { repeatIcon.innerHTML = '<polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path>'; }
         }
-        // ✅ CORRECCIÓN: Modal del ecualizador funcional y con preajustes
+        // ✅ CORRECCIÓN: Lógica de eventos del ecualizador refactorizada
         function openEQModal() {
             const presets = {
                 'Pop': { bass: 4, mids: -2, treble: 5 }, 'Rock': { bass: 5, mids: 1, treble: 4 },
@@ -577,12 +593,13 @@
                     `).join('')}
                 </div>
                 <div class="flex flex-wrap justify-center gap-2 mt-2">
+                    <button class="eq-preset-btn" data-preset="flat">Plano</button>
                     ${Object.keys(presets).map(p => `<button class="eq-preset-btn" data-preset="${p}">${p}</button>`).join('')}
                 </div>`;
             const modal = showModal(modalContent);
 
             const applyPreset = (presetName) => {
-                state.settings.eq = { ...presets[presetName] };
+                state.settings.eq = (presetName === 'flat') ? { bass: 0, mids: 0, treble: 0 } : { ...presets[presetName] };
                 applyEQ();
                 saveState();
                 modal.querySelectorAll('.knob').forEach(knob => {
@@ -595,25 +612,34 @@
             modal.querySelector('#close-eq-btn').addEventListener('click', closeModal);
             modal.querySelectorAll('.eq-preset-btn').forEach(btn => btn.addEventListener('click', () => applyPreset(btn.dataset.preset)));
             modal.querySelectorAll('.knob').forEach(knob => {
-                let isDragging = false; const knobType = knob.dataset.type;
-                knob.addEventListener('mousedown', (e) => { isDragging = true; e.preventDefault(); });
-                const endDrag = () => { if(isDragging) { isDragging = false; saveState(); }};
-                window.addEventListener('mouseup', endDrag, { once: true });
-                window.addEventListener('mouseleave', endDrag, { once: true });
-                window.addEventListener('mousemove', (e) => {
-                    if (!isDragging) return;
+                const knobType = knob.dataset.type;
+                
+                const handleMouseMove = (e) => {
                     const rect = knob.getBoundingClientRect();
                     const centerX = rect.left + rect.width / 2; const centerY = rect.top + rect.height / 2;
                     let angle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI) + 90;
                     if (angle < 0) angle += 360;
-                    
                     let rotation = Math.max(-135, Math.min(135, angle - 180));
-                    
                     const value = Math.round((rotation + 135) / 270 * 40 - 20);
                     state.settings.eq[knobType] = value;
                     knob.style.transform = `rotate(${rotation}deg)`;
                     applyEQ();
+                };
+
+                const handleMouseUp = () => {
+                    saveState();
+                    modal.removeEventListener('mousemove', handleMouseMove);
+                    modal.removeEventListener('mouseup', handleMouseUp);
+                    modal.removeEventListener('mouseleave', handleMouseUp);
+                };
+
+                knob.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    modal.addEventListener('mousemove', handleMouseMove);
+                    modal.addEventListener('mouseup', handleMouseUp);
+                    modal.addEventListener('mouseleave', handleMouseUp);
                 });
+
                 knob.addEventListener('dblclick', () => { 
                     state.settings.eq[knobType] = 0;
                     knob.style.transform = `rotate(0deg)`;
