@@ -2,7 +2,7 @@
   "name": "Reproductor de Música Definitivo",
   "short_name": "MiMúsica",
   "description": "Un reproductor de música PWA offline que funciona con tus archivos locales.",
-  "start_url": "/",
+  "start_url": "/Reproductor-de-musica/",
   "display": "standalone",
   "background_color": "#1a1b26",
   "theme_color": "#1a1b26",
