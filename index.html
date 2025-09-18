@@ -358,7 +358,7 @@
         let animationFrameId;
         
         function initDB(onSuccess) {
-            const request = indexedDB.open('MusicPlayerDB', 3);
+            const request = indexedDB.open('MusicPlayerDB', 3); 
             request.onupgradeneeded = (event) => {
                 const dbInstance = event.target.result;
                 if (!dbInstance.objectStoreNames.contains('songs')) {
@@ -398,7 +398,7 @@
             };
         }
         
-        // **CORRECCIÓN #1**: Se crea el grafo de audio de forma permanente para AMBOS elementos de audio.
+        // **LÓGICA RESTAURADA Y MEJORADA**
         function setupWebAudioAPIIfNeeded() {
             if (audioContext) {
                 if(audioContext.state === 'suspended') audioContext.resume();
@@ -415,11 +415,9 @@
                 analyser.fftSize = 256; 
                 dataArray = new Uint8Array(analyser.frequencyBinCount);
                 
-                // Crear fuentes para AMBOS elementos de audio desde el principio
                 sourceNode1 = audioContext.createMediaElementSource(audio1);
                 sourceNode2 = audioContext.createMediaElementSource(audio2);
 
-                // Conectar ambos al mismo grafo de efectos y análisis
                 const connectSource = (source) => {
                     source.connect(bassFilter)
                           .connect(midsFilter)
@@ -443,6 +441,9 @@
             function play(song, startTime = 0) {
                 if (!song || !song.file || isCrossfading) return; 
                 
+                // Primero, asegurarse de que el contexto de audio esté activo.
+                setupWebAudioAPIIfNeeded();
+
                 audio1.pause();
                 audio2.pause();
 
