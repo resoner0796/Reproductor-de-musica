@@ -391,9 +391,12 @@
                 onLoad(songs);
             };
         }
-        
+
         function setupWebAudioAPIIfNeeded() {
-            if (audioContext) return;
+            if (audioContext) {
+                if(audioContext.state === 'suspended') audioContext.resume();
+                return;
+            }
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = audioContext.createAnalyser(); 
@@ -412,8 +415,13 @@
         }
         
         function enableVisualizerAndEQ() {
-            setupWebAudioAPIIfNeeded();
-            if (!audioContext || sourceNode) return; 
+            if (!audioContext) return; 
+
+            // **CORRECCIÓN CLAVE**: Desconectar la fuente anterior si existe, ANTES de crear una nueva.
+            if (sourceNode) {
+                sourceNode.disconnect();
+                sourceNode = null;
+            }
 
             try {
                 sourceNode = audioContext.createMediaElementSource(currentAudio);
@@ -443,20 +451,19 @@
                     state.isPlaying = true; 
                     updateUIonPlayPause(); 
                     
-                    if (sourceNode) {
-                        sourceNode.disconnect();
-                        sourceNode = null;
-                    }
                     if(audioContext){ 
                         enableVisualizerAndEQ();
                     }
 
                     drawVisualizer(); 
-                }).catch(e => console.error("Error al reproducir:", e));
+                }).catch(e => {
+                    console.error("Error al reproducir:", e);
+                    state.isPlaying = false;
+                    updateUIonPlayPause();
+                });
             }
             function pause() { currentAudio.pause(); state.isPlaying = false; updateUIonPlayPause(); cancelAnimationFrame(animationFrameId); }
             function resume() { 
-                // **CORRECCIÓN #1**: Siempre intentar reanudar el AudioContext antes de reproducir.
                 if (audioContext && audioContext.state === 'suspended') {
                     audioContext.resume();
                 }
@@ -540,11 +547,7 @@
                 currentAudio = standbyAudio;
                 standbyAudio = temp;
                 
-                if(sourceNode) {
-                    sourceNode.disconnect();
-                    sourceNode = null;
-                    enableVisualizerAndEQ();
-                }
+                enableVisualizerAndEQ();
 
                 state.currentSongId = nextSong.id;
                 updatePlayerUI(nextSong);
@@ -780,11 +783,7 @@
         }
 
         function togglePlayPause() {
-            // **CORRECCIÓN #2**: Inicializar el sistema de audio en la primera interacción.
             setupWebAudioAPIIfNeeded();
-            if (audioContext && audioContext.state === 'suspended') {
-                audioContext.resume();
-            }
             
             if (state.isPlaying) {
                 audioManager.pause(); 
@@ -929,11 +928,7 @@
         }
         
         function playSongFromContext(songId, contextType, contextId = null) {
-            // **CORRECCIÓN #3**: Y también inicializarlo aquí, para que funcione desde la biblioteca.
             setupWebAudioAPIIfNeeded();
-            if (audioContext && audioContext.state === 'suspended') {
-                audioContext.resume();
-            }
 
             if (isCrossfading) return;
             if (state.currentContext.type !== contextType || state.currentContext.id !== contextId) { setContext(contextType, contextId); }
