@@ -310,8 +310,8 @@
     </template>
     
     <input type="file" id="file-input" accept=".mp3" multiple class="hidden">
-    <audio id="audio1" crossorigin="anonymous" playsinline webkit-playsinline></audio>
-    <audio id="audio2" crossorigin="anonymous" playsinline webkit-playsinline></audio>
+    <audio id="audio1" crossorigin="anonymous"></audio>
+    <audio id="audio2" crossorigin="anonymous"></audio>
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -383,7 +383,12 @@
             if (!db) return;
             const request = db.transaction(['songs'], 'readonly').objectStore('songs').getAll();
             request.onsuccess = () => {
-                const songs = request.result.map(song => ({ ...song, url: URL.createObjectURL(base64toBlob(song.data)) }));
+                const songs = request.result.map(song => {
+                    return {
+                        ...song,
+                        url: `data:audio/mpeg;base64,${song.data}` // ✅ Usar Data URI en lugar de ObjectURL
+                    };
+                });
                 onLoad(songs);
             };
         }
@@ -416,8 +421,8 @@
 
                 
                 if (song.data) {
-                    const blob = base64toBlob(song.data);
-                    song.url = URL.createObjectURL(blob);
+                    // Aseguramos URL válida siempre en PWA iOS
+                    song.url = `data:audio/mpeg;base64,${song.data}`;
                 }
                 currentAudio.src = song.url; 
                 currentAudio.currentTime = startTime; 
@@ -777,9 +782,6 @@
             // CORRECCIÓN: Reiniciar animación del visualizador al volver a la pestaña
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible' && state.isPlaying) {
-                    if (audioContext && audioContext.state === 'suspended') {
-                        audioContext.resume();
-                    }
                     drawVisualizer();
                 }
             });
