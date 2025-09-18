@@ -348,7 +348,6 @@
             settings: { theme: 'default', crossfadeEnabled: true, crossfadeDuration: 4, eq: { bass: 0, mids: 0, treble: 0 } }
         };
         
-        // Las variables del AudioContext se inicializan en null. Solo se crearán cuando el usuario interactúe con el EQ.
         let audioContext = null, analyser = null, masterGain = null, dataArray = null, sourceNode = null, bassFilter = null, midsFilter = null, trebleFilter = null;
         let db; 
         
@@ -375,30 +374,29 @@
         function saveSongToDB(song) {
             if (!db) return;
             const transaction = db.transaction(['songs'], 'readwrite');
-            // Quitamos la 'url' temporal antes de guardar, solo guardamos la data base64.
             const { url, ...songToSave } = song; 
             transaction.objectStore('songs').put(songToSave);
         }
 
-        // **CORRECCIÓN CLAVE**: Al cargar las canciones de la BD, se reconstruye una 'Data URI'
-        // a partir de la data en base64. Esta URI es persistente y siempre funcionará.
         function loadSongsFromDB(onLoad) {
             if (!db) return;
             const request = db.transaction(['songs'], 'readonly').objectStore('songs').getAll();
             request.onsuccess = () => {
-                const songs = request.result.map(song => {
-                    return {
-                        ...song,
-                        url: `data:audio/mpeg;base64,${song.data}`
-                    };
-                });
+                const songs = request.result.map(song => ({
+                    ...song,
+                    url: `data:audio/mpeg;base64,${song.data}`
+                }));
                 onLoad(songs);
             };
         }
 
-        // La Web Audio API solo se inicializa si no existe, como la primera vez que se abre el EQ.
-        function setupWebAudioAPIIfNeeded() {
-            if (audioContext) return;
+        // **CORRECCIÓN #1**: Función centralizada para inicializar el sistema de audio.
+        // Se llama con la primera interacción del usuario para "despertar" el audio.
+        function initializeAudioSystem() {
+            if (audioContext) {
+                if(audioContext.state === 'suspended') audioContext.resume();
+                return;
+            }
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = audioContext.createAnalyser(); 
@@ -416,10 +414,14 @@
             }
         }
         
-        // Esta función conecta el elemento <audio> que está sonando al grafo de la Web Audio API.
         function enableVisualizerAndEQ() {
-            setupWebAudioAPIIfNeeded();
-            if (!audioContext || sourceNode) return; // Si no hay contexto o ya está conectado, no hacer nada
+            if (!audioContext) return; // Si no hay contexto, no hacer nada.
+            
+            // Si ya existe un sourceNode, desconectarlo para crear uno nuevo.
+            if (sourceNode) {
+                sourceNode.disconnect();
+                sourceNode = null;
+            }
 
             try {
                 sourceNode = audioContext.createMediaElementSource(currentAudio);
@@ -435,7 +437,6 @@
             }
         }
         
-        // El manejador de audio usa la etiqueta <audio> directamente para máxima compatibilidad.
         const audioManager = (() => {
             function play(song, startTime = 0) {
                 if (!song || isCrossfading) return; 
@@ -446,23 +447,30 @@
                 currentAudio.src = song.url; 
                 currentAudio.currentTime = startTime; 
                 currentAudio.volume = state.volume;
+                const playPromise = currentAudio.play();
+                
+                if(playPromise !== undefined) {
+                    playPromise.then(() => { 
+                        state.isPlaying = true; 
+                        updateUIonPlayPause(); 
+                        // **CORRECCIÓN #2**: Se asegura de conectar el visualizador CADA VEZ que empieza una canción.
+                        enableVisualizerAndEQ();
+                        drawVisualizer(); 
+                    }).catch(e => {
+                        console.error("Error al reproducir:", e)
+                        state.isPlaying = false;
+                        updateUIonPlayPause();
+                    });
+                }
+            }
+            function pause() { currentAudio.pause(); state.isPlaying = false; updateUIonPlayPause(); cancelAnimationFrame(animationFrameId); }
+            function resume() { 
                 currentAudio.play().then(() => { 
                     state.isPlaying = true; 
                     updateUIonPlayPause(); 
-                    
-                    if (sourceNode) {
-                        sourceNode.disconnect();
-                        sourceNode = null;
-                    }
-                    if(audioContext){ // Si el audio context ya estaba activo, se reconecta.
-                        enableVisualizerAndEQ();
-                    }
-
                     drawVisualizer(); 
-                }).catch(e => console.error("Error al reproducir:", e));
+                }).catch(e => console.error("Error al reanudar:", e)); 
             }
-            function pause() { currentAudio.pause(); state.isPlaying = false; updateUIonPlayPause(); cancelAnimationFrame(animationFrameId); }
-            function resume() { currentAudio.play().then(() => { state.isPlaying = true; updateUIonPlayPause(); drawVisualizer(); }).catch(e => console.error("Error al reanudar:", e)); }
             
             [audio1, audio2].forEach(audio => {
                 audio.addEventListener('timeupdate', () => { 
@@ -478,8 +486,7 @@
                 });
             });
             
-            return { 
-                play, pause, resume, 
+            return { play, pause, resume, 
                 seek: (time) => { if (!isCrossfading) currentAudio.currentTime = time; },
                 setVolume: (vol) => { if (!isCrossfading) currentAudio.volume = vol; } 
             };
@@ -508,11 +515,7 @@
             const delta = (to - from) / steps;
             let currentStep = 0;
             const timer = setInterval(() => {
-                if (currentStep++ >= steps) {
-                    clearInterval(timer);
-                    audio.volume = to;
-                    return;
-                }
+                if (currentStep++ >= steps) { clearInterval(timer); audio.volume = to; return; }
                 audio.volume += delta;
             }, stepDuration);
         }
@@ -537,11 +540,7 @@
                 currentAudio = standbyAudio;
                 standbyAudio = temp;
                 
-                if(sourceNode) {
-                    sourceNode.disconnect();
-                    sourceNode = null;
-                    enableVisualizerAndEQ();
-                }
+                enableVisualizerAndEQ();
 
                 state.currentSongId = nextSong.id;
                 updatePlayerUI(nextSong);
@@ -560,17 +559,11 @@
                 audioManager.play(getSongById(state.currentSongId), 0);
                 return;
             }
-
             let nextSongToPlay = getSongById(state.queue.shift()) || getNextSongInContext();
-            
             if (!nextSongToPlay) {
-                if (!isAuto) {
-                    state.isPlaying = false;
-                    updateUIonPlayPause();
-                }
+                if (!isAuto) { state.isPlaying = false; updateUIonPlayPause(); }
                 return;
             }
-
             if (isAuto && state.settings.crossfadeEnabled) {
                 crossfadeToSong(nextSongToPlay);
             } else {
@@ -612,7 +605,6 @@
                 renderAll();
                 const lastSong = getSongById(state.currentSongId);
                 updatePlayerUI(lastSong);
-                // Si había una canción sonando, preparamos el elemento de audio para que muestre la duración.
                 if (lastSong) {
                     currentAudio.src = lastSong.url;
                     currentAudio.addEventListener('loadedmetadata', () => {
@@ -626,10 +618,7 @@
         }
         
         function saveState() {
-            const stateToSave = {
-                playlists: state.playlists, currentSongId: state.currentSongId, volume: state.volume, 
-                settings: state.settings, isShuffle: state.isShuffle, repeatMode: state.repeatMode, queue: state.queue
-            };
+            const stateToSave = { playlists: state.playlists, currentSongId: state.currentSongId, volume: state.volume, settings: state.settings, isShuffle: state.isShuffle, repeatMode: state.repeatMode, queue: state.queue };
             localStorage.setItem('musicPlayerState', JSON.stringify(stateToSave));
         }
 
@@ -679,18 +668,8 @@
                 return;
             }
 
-            const artists = state.library.reduce((acc, song) => {
-                (acc[song.artist] = acc[song.artist] || []).push(song);
-                return acc;
-            }, {});
-
-            const albums = state.library.reduce((acc, song) => {
-                if (song.album && song.album !== 'Desconocido') {
-                    (acc[song.album] = acc[song.album] || []).push(song);
-                }
-                return acc;
-            }, {});
-
+            const artists = state.library.reduce((acc, song) => { (acc[song.artist] = acc[song.artist] || []).push(song); return acc; }, {});
+            const albums = state.library.reduce((acc, song) => { if (song.album && song.album !== 'Desconocido') { (acc[song.album] = acc[song.album] || []).push(song); } return acc; }, {});
             const createSection = (title, content) => {
                 const details = document.createElement('details');
                 const summary = document.createElement('summary');
@@ -760,13 +739,8 @@
             if (isNaN(duration)) return;
             dom.progressBar.value = (currentTime / duration) * 100;
             dom.currentTime.textContent = formatTime(currentTime); dom.duration.textContent = formatTime(duration);
-
             if ('mediaSession' in navigator && navigator.mediaSession.metadata) {
-                navigator.mediaSession.setPositionState({
-                    duration: duration,
-                    playbackRate: currentAudio.playbackRate,
-                    position: currentTime
-                });
+                navigator.mediaSession.setPositionState({ duration: duration, playbackRate: currentAudio.playbackRate, position: currentTime });
             }
         }
 
@@ -778,8 +752,8 @@
         }
 
         function togglePlayPause() {
-            if (audioContext && audioContext.state === 'suspended') audioContext.resume();
-            
+            // **CORRECCIÓN #3**: Llamada a la función de inicialización.
+            initializeAudioSystem();
             if (state.isPlaying) audioManager.pause(); 
             else if (state.currentSongId) audioManager.resume();
             else if (state.library.length > 0) playSongFromContext(state.library[0].id, 'library');
@@ -795,40 +769,26 @@
             dom.shuffleBtn.addEventListener('click', toggleShuffle); 
             dom.repeatBtn.addEventListener('click', cycleRepeatMode);
             dom.progressBar.addEventListener('input', (e) => audioManager.seek((e.target.value / 100) * (currentAudio.duration || 0)));
-            dom.volumeSlider.addEventListener('input', (e) => { 
-                state.volume = parseFloat(e.target.value); 
-                audioManager.setVolume(state.volume); 
-            });
+            dom.volumeSlider.addEventListener('input', (e) => { state.volume = parseFloat(e.target.value); audioManager.setVolume(state.volume); });
             dom.volumeSlider.addEventListener('change', saveState);
             dom.addFilesBtn.addEventListener('click', () => dom.fileInput.click());
             dom.fileInput.addEventListener('change', handleFileSelect);
             dom.settingsBtn.addEventListener('click', openSettingsModal); 
             
-            // **CORRECCIÓN CLAVE**: Solo se activa la Web Audio API al hacer clic en el botón del EQ.
             dom.eqBtn.addEventListener('click', () => {
+                initializeAudioSystem();
                 openEQModal();
-                enableVisualizerAndEQ();
             });
 
             dom.contextMenuBackdrop.addEventListener('click', hideContextMenu);
             dom.convertBtn.addEventListener('click', () => {
                 const link = dom.youtubeLinkInput.value.trim();
-                if (link) {
-                    showToast("Función de descarga no implementada todavía.");
-                } else {
-                    showToast("Por favor, pega un enlace de YouTube.");
-                }
+                if (link) { showToast("Función de descarga no implementada todavía."); } 
+                else { showToast("Por favor, pega un enlace de YouTube."); }
             });
-            dom.nowPlayingToggleBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                toggleNowPlayingList();
-            });
-            dom.nowPlayingBackdrop.addEventListener('click', () => {
-                toggleNowPlayingList(false);
-            });
+            dom.nowPlayingToggleBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleNowPlayingList(); });
+            dom.nowPlayingBackdrop.addEventListener('click', () => { toggleNowPlayingList(false); });
             
-            // **CORRECCIÓN CLAVE**: Al volver a la app, se reanuda el audio context y se da play()
-            // para asegurar que el audio continúe sonando sin interrupciones.
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible' && state.isPlaying) {
                     if (audioContext && audioContext.state === 'suspended') {
@@ -922,6 +882,8 @@
         }
         
         function playSongFromContext(songId, contextType, contextId = null) {
+            // **CORRECCIÓN #4**: Llamada a la función de inicialización.
+            initializeAudioSystem();
             if (isCrossfading) return;
             if (state.currentContext.type !== contextType || state.currentContext.id !== contextId) { setContext(contextType, contextId); }
             state.contextIndex = state.contextQueue.findIndex(id => id === songId); 
@@ -986,30 +948,17 @@
             if (!state.currentSongId) return;
 
             const upcomingSongs = [];
-            
-            state.queue.forEach(songId => {
-                const song = getSongById(songId);
-                if (song) upcomingSongs.push(song);
-            });
-            
+            state.queue.forEach(songId => { const song = getSongById(songId); if (song) upcomingSongs.push(song); });
             if (state.contextIndex !== -1 && state.contextQueue.length > 0) {
-                for (let i = state.contextIndex + 1; i < state.contextQueue.length; i++) {
-                    const song = getSongById(state.contextQueue[i]);
-                    if (song) upcomingSongs.push(song);
-                }
+                for (let i = state.contextIndex + 1; i < state.contextQueue.length; i++) { const song = getSongById(state.contextQueue[i]); if (song) upcomingSongs.push(song); }
                 if (state.repeatMode === 'all') {
-                    for (let i = 0; i < state.contextIndex; i++) {
-                        const song = getSongById(state.contextQueue[i]);
-                        if (song) upcomingSongs.push(song);
-                    }
+                    for (let i = 0; i < state.contextIndex; i++) { const song = getSongById(state.contextQueue[i]); if (song) upcomingSongs.push(song); }
                 }
             }
-
             if(upcomingSongs.length === 0) {
                  dom.nowPlayingList.innerHTML = `<li class="text-center text-secondary p-4 text-sm">Fin de la lista.</li>`;
                  return;
             }
-
             upcomingSongs.slice(0, 10).forEach((song, index) => {
                 const item = dom.songItemTemplate.content.cloneNode(true).querySelector('.list-item');
                 item.querySelector('.options-btn').remove();
@@ -1017,21 +966,16 @@
                 item.querySelector('[data-title]').textContent = song.title; 
                 item.querySelector('[data-artist]').textContent = song.artist;
                 item.dataset.songId = song.id;
-                
                 item.addEventListener('click', () => {
                     const clickedSongIndexInUpcoming = upcomingSongs.findIndex(s => s.id === song.id);
                     const newQueue = upcomingSongs.slice(clickedSongIndexInUpcoming).map(s => s.id);
-                    
                     state.queue = [];
                     setContext('library'); 
-                    
                     const songToPlayId = newQueue.shift();
                     state.queue = newQueue;
-                    
                     playSongFromContext(songToPlayId, 'library');
                     toggleNowPlayingList(false);
                 });
-
                 dom.nowPlayingList.appendChild(item);
             });
         }
@@ -1082,7 +1026,6 @@
         function updateControlButtonsUI() {
             dom.shuffleBtn.classList.toggle('active', state.isShuffle);
             dom.repeatBtn.classList.toggle('active', state.repeatMode !== 'none');
-            
             const repeatIconSVG = {
                 none: `<polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path>`,
                 all: `<polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path>`,
