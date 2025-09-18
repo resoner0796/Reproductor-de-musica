@@ -348,7 +348,7 @@
             settings: { theme: 'default', crossfadeEnabled: true, crossfadeDuration: 4, eq: { bass: 0, mids: 0, treble: 0 } }
         };
         
-        let audioContext = null, analyser = null, masterGain = null, dataArray = null, sourceNode = null, bassFilter = null, midsFilter = null, trebleFilter = null;
+        let audioContext = null, analyser = null, masterGain = null, dataArray = null, sourceNode1 = null, sourceNode2 = null, bassFilter = null, midsFilter = null, trebleFilter = null;
         let db; 
         
         let currentAudio = audio1;
@@ -404,33 +404,36 @@
                 
                 analyser.fftSize = 256; 
                 dataArray = new Uint8Array(analyser.frequencyBinCount);
+                
+                // **CORRECCIÓN**: Crea las fuentes de audio aquí y conéctalas
+                sourceNode1 = audioContext.createMediaElementSource(audio1);
+                sourceNode2 = audioContext.createMediaElementSource(audio2);
+
+                (currentAudio === audio1 ? sourceNode1 : sourceNode2)
+                    .connect(bassFilter)
+                    .connect(midsFilter)
+                    .connect(trebleFilter)
+                    .connect(masterGain)
+                    .connect(analyser)
+                    .connect(audioContext.destination);
+
                 applyEQ(); 
             } catch (e) { 
-                console.error("Web Audio API no soportada", e); 
+                console.error("Web Audio API no soportada o error al crear nodos:", e); 
                 audioContext = null;
             }
         }
         
-        function enableVisualizerAndEQ() {
-            setupWebAudioAPIIfNeeded();
+        function switchAudioSource() {
             if (!audioContext) return;
             
-            if (sourceNode) {
-                sourceNode.disconnect();
-            }
-
-            try {
-                sourceNode = audioContext.createMediaElementSource(currentAudio);
-                sourceNode.connect(bassFilter);
-                bassFilter.connect(midsFilter);
-                midsFilter.connect(trebleFilter);
-                trebleFilter.connect(masterGain);
-                masterGain.connect(analyser);
-                analyser.connect(audioContext.destination);
-            } catch (e) {
-                console.warn("No se pudo crear sourceNode para visualizador/EQ:", e);
-                sourceNode = null;
-            }
+            // Desconectar todo
+            sourceNode1.disconnect();
+            sourceNode2.disconnect();
+            
+            // Reconectar la fuente actual
+            const sourceToConnect = (currentAudio === audio1) ? sourceNode1 : sourceNode2;
+            sourceToConnect.connect(bassFilter);
         }
 
         const audioManager = (() => {
@@ -447,18 +450,26 @@
                 currentAudio.src = song.url; 
                 currentAudio.currentTime = startTime; 
                 currentAudio.volume = state.volume;
-                currentAudio.play().then(() => { 
-                    state.isPlaying = true; 
-                    updateUIonPlayPause(); 
-                    
-                    enableVisualizerAndEQ();
-                    drawVisualizer(); 
+                
+                // Primero intenta reproducir el audio
+                const playPromise = currentAudio.play();
 
-                }).catch(e => {
-                    console.error("Error al reproducir:", e)
-                    state.isPlaying = false;
-                    updateUIonPlayPause();
-                });
+                if (playPromise !== undefined) {
+                    playPromise.then(() => { 
+                        state.isPlaying = true; 
+                        updateUIonPlayPause(); 
+                        
+                        // Inicializa la API de audio después de que el usuario haya interactuado
+                        setupWebAudioAPIIfNeeded();
+                        switchAudioSource(); // Asegúrate de que la fuente correcta esté conectada
+                        drawVisualizer(); 
+
+                    }).catch(e => {
+                        console.error("Error al reproducir:", e);
+                        state.isPlaying = false;
+                        updateUIonPlayPause();
+                    });
+                }
             }
             function pause() { currentAudio.pause(); state.isPlaying = false; updateUIonPlayPause(); cancelAnimationFrame(animationFrameId); }
             function resume() { 
@@ -545,7 +556,7 @@
                 currentAudio = standbyAudio;
                 standbyAudio = temp;
                 
-                enableVisualizerAndEQ();
+                switchAudioSource();
 
                 state.currentSongId = nextSong.id;
                 updatePlayerUI(nextSong);
