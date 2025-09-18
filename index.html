@@ -208,7 +208,7 @@
                 <div class="player-view-content flex-grow flex flex-col justify-center items-center space-y-4 p-4">
                     <div class="relative aspect-square w-full max-w-xs rounded-xl shadow-lg overflow-hidden glass-effect">
                         <img id="album-art" src="https://placehold.co/400x400/1a1b26/1a1b26" alt="Carátula" class="w-full h-full object-cover">
-                        <canvas id="visualizer" class="absolute inset-0 w-full h-full opacity-60"></canvas>
+                        <canvas id="visualizer" class="absolute inset-0 w-full h-full"></canvas>
                     </div>
                     <div class="text-center w-full px-4">
                         <h2 id="song-title" class="text-2xl font-bold truncate">Bienvenido</h2>
@@ -413,7 +413,11 @@
         
         function enableVisualizerAndEQ() {
             setupWebAudioAPIIfNeeded();
-            if (!audioContext || sourceNode) return;
+            if (!audioContext) return;
+            // **CORRECCIÓN**: Si el sourceNode ya existe, desconéctalo antes de crear uno nuevo.
+            if (sourceNode) {
+                sourceNode.disconnect();
+            }
 
             try {
                 sourceNode = audioContext.createMediaElementSource(currentAudio);
@@ -447,19 +451,28 @@
                     state.isPlaying = true; 
                     updateUIonPlayPause(); 
                     
-                    if (sourceNode) {
-                        sourceNode.disconnect();
-                        sourceNode = null;
-                    }
-                    if(audioContext){
-                        enableVisualizerAndEQ();
-                    }
-
+                    // **CORRECCIÓN**: Llama a `enableVisualizerAndEQ` después de que la reproducción comience con éxito.
+                    enableVisualizerAndEQ();
                     drawVisualizer(); 
-                }).catch(e => console.error("Error al reproducir:", e));
+
+                }).catch(e => {
+                    console.error("Error al reproducir:", e)
+                    state.isPlaying = false;
+                    updateUIonPlayPause();
+                });
             }
             function pause() { currentAudio.pause(); state.isPlaying = false; updateUIonPlayPause(); cancelAnimationFrame(animationFrameId); }
-            function resume() { currentAudio.play().then(() => { state.isPlaying = true; updateUIonPlayPause(); drawVisualizer(); }).catch(e => console.error("Error al reanudar:", e)); }
+            function resume() { 
+                // **CORRECCIÓN**: Asegúrate de que el AudioContext esté activo antes de reanudar.
+                if (audioContext && audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+                currentAudio.play().then(() => { 
+                    state.isPlaying = true; 
+                    updateUIonPlayPause(); 
+                    drawVisualizer(); 
+                }).catch(e => console.error("Error al reanudar:", e)); 
+            }
             
             [audio1, audio2].forEach(audio => {
                 audio.addEventListener('timeupdate', () => { 
@@ -534,11 +547,8 @@
                 currentAudio = standbyAudio;
                 standbyAudio = temp;
                 
-                if(sourceNode) {
-                    sourceNode.disconnect();
-                    sourceNode = null;
-                    enableVisualizerAndEQ();
-                }
+                // **CORRECCIÓN**: Asegúrate de reconectar el visualizador al nuevo elemento de audio.
+                enableVisualizerAndEQ();
 
                 state.currentSongId = nextSong.id;
                 updatePlayerUI(nextSong);
@@ -609,6 +619,16 @@
                 renderAll();
                 const lastSong = getSongById(state.currentSongId);
                 updatePlayerUI(lastSong);
+
+                // **CORRECCIÓN**: Carga el audio de la última canción al iniciar.
+                if (lastSong) {
+                    currentAudio.src = lastSong.url;
+                    // Escucha a que los metadatos se carguen para mostrar la duración correcta.
+                    currentAudio.addEventListener('loadedmetadata', () => {
+                        updateProgressUI(0, currentAudio.duration);
+                    }, { once: true });
+                }
+
                 updateControlButtonsUI();
                 updateMiniPlayerVisibility();
                 renderNowPlayingList();
@@ -761,11 +781,17 @@
         }
 
         function togglePlayPause() {
-            if (audioContext && audioContext.state === 'suspended') audioContext.resume();
+            if (audioContext && audioContext.state === 'suspended') {
+                 audioContext.resume();
+            }
             
-            if (state.isPlaying) audioManager.pause(); 
-            else if (state.currentSongId) audioManager.resume();
-            else if (state.library.length > 0) playSongFromContext(state.library[0].id, 'library');
+            if (state.isPlaying) {
+                audioManager.pause(); 
+            } else if (state.currentSongId) {
+                audioManager.resume();
+            } else if (state.library.length > 0) {
+                playSongFromContext(state.library[0].id, 'library');
+            }
         }
 
         function setupEventListeners() {
@@ -789,7 +815,7 @@
             
             dom.eqBtn.addEventListener('click', () => {
                 openEQModal();
-                enableVisualizerAndEQ();
+                enableVisualizerAndEQ(); // Activa el audio context al abrir el modal de EQ
             });
 
             dom.contextMenuBackdrop.addEventListener('click', hideContextMenu);
@@ -1053,7 +1079,6 @@
         function openSettingsModal() { const modalContent = `<div class="flex justify-between items-center mb-2"><h2 class="text-2xl font-bold">Configuración</h2><button id="close-settings-btn" class="p-2 rounded-full hover-bg text-2xl leading-none">&times;</button></div><div class="space-y-2"><div class="flex items-center justify-between py-2"><label for="crossfade-toggle" class="text-sm">Crossfade Automático</label><div class="flex items-center space-x-3"><span id="crossfade-duration-label" class="text-xs w-12 text-center"></span><input type="range" id="crossfade-duration-slider" min="1" max="10" class="w-24"><input type="checkbox" id="crossfade-toggle" class="form-checkbox h-5 w-5 rounded bg-slate-700 border-slate-600 text-accent-primary focus:ring-accent-primary"></div></div> <div class="py-2"> <label class="text-sm">Tema</label> <div id="theme-selector" class="flex items-center space-x-4 py-2"><button data-theme="default" class="theme-btn w-8 h-8 rounded-full bg-[#1a1b26] border-2 border-slate-500"></button><button data-theme="sunset" class="theme-btn w-8 h-8 rounded-full bg-[#2d1d2b] border-2 border-slate-500"></button><button data-theme="ocean" class="theme-btn w-8 h-8 rounded-full bg-[#1f2c27] border-2 border-slate-500"></button></div></div></div>`; const modal = showModal(modalContent); modal.querySelector('#close-settings-btn').addEventListener('click', closeModal); const crossfadeToggle = modal.querySelector('#crossfade-toggle'); const crossfadeSlider = modal.querySelector('#crossfade-duration-slider'); const crossfadeLabel = modal.querySelector('#crossfade-duration-label'); crossfadeToggle.checked = state.settings.crossfadeEnabled; crossfadeSlider.value = state.settings.crossfadeDuration; crossfadeLabel.textContent = `${state.settings.crossfadeDuration}s`; crossfadeToggle.addEventListener('change', (e) => { state.settings.crossfadeEnabled = e.target.checked; saveState(); }); crossfadeSlider.addEventListener('input', (e) => { state.settings.crossfadeDuration = parseInt(e.target.value); crossfadeLabel.textContent = `${state.settings.crossfadeDuration}s`; }); crossfadeSlider.addEventListener('change', saveState); modal.querySelectorAll('.theme-btn').forEach(btn => btn.addEventListener('click', (e) => { state.settings.theme = e.currentTarget.dataset.theme; applyTheme(); saveState(); })); }
         function applyTheme(){ dom.body.className = `theme-${state.settings.theme || 'default'}`; }
         
-        // --- ÚLTIMA CORRECCIÓN: Lógica de dibujado del visualizador ---
         function drawVisualizer() { 
             if (!state.isPlaying || !analyser) { 
                 cancelAnimationFrame(animationFrameId);
@@ -1063,15 +1088,13 @@
             animationFrameId = requestAnimationFrame(drawVisualizer); 
             analyser.getByteFrequencyData(dataArray); 
             
-            // 1. Limpiar el lienzo en cada cuadro para un efecto nítido
             dom.canvasCtx.clearRect(0, 0, dom.visualizerCanvas.width, dom.visualizerCanvas.height);
 
             const barWidth = (dom.visualizerCanvas.width / dataArray.length) * 2.5;
             let x = 0;
             for (let i = 0; i < dataArray.length; i++) {
-                const barHeight = dataArray[i] / 2;
+                const barHeight = dataArray[i] / 1.5; // Ajuste para que las barras no sean tan altas
                 
-                // 2. Usar el color del tema actual para las barras
                 dom.canvasCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent-primary');
                 dom.canvasCtx.fillRect(x, dom.visualizerCanvas.height - barHeight, barWidth, barHeight);
                 x += barWidth + 1;
