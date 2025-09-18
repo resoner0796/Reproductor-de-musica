@@ -1,7 +1,9 @@
 {
   "name": "Reproductor de Música Definitivo",
   "short_name": "MiMúsica",
-  "start_url": ".",
+  "description": "Un reproductor de música PWA que funciona sin conexión y en segundo plano.",
+  "scope": "/Reproductor-de-musica/",
+  "start_url": "/Reproductor-de-musica/",
   "display": "standalone",
   "background_color": "#1a1b26",
   "theme_color": "#1a1b26",
