@@ -2,27 +2,27 @@
   "name": "Reproductor de Música Definitivo",
   "short_name": "MiMúsica",
   "description": "Un reproductor de música PWA offline que funciona con tus archivos locales.",
-  "start_url": ".",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#1a1b26",
   "theme_color": "#1a1b26",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "icon-192x192.PNG",
+      "src": "icon-192x192.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "icon-512X512.PNG",
+      "src": "icon-512x512.png",
       "type": "image/png",
       "sizes": "512x512"
     },
     {
-      "src": "icon-512-maskable.PNG",
+      "src": "icon-512x512.png",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
   ]
 }
