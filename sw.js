@@ -1,12 +1,13 @@
-const CACHE_NAME = 'music-player-cache-v2';
-// Lista de archivos locales esenciales.
+// Aumentamos la versión para forzar la actualización del Service Worker
+const CACHE_NAME = 'music-player-cache-v3'; 
+
+// Lista de archivos con las rutas completas y correctas para GitHub Pages
 const urlsToCache = [
-  '/',
-  'index.html',
-  'manifest.json',
-  // Rutas a los iconos corregidas a minúsculas
-  'icon-192x192.PNG',
-  'icon-512x512.PNG'
+  '/Reproductor-de-musica/',
+  '/Reproductor-de-musica/index.html',
+  '/Reproductor-de-musica/manifest.json',
+  '/Reproductor-de-musica/icon-192x192.PNG',
+  '/Reproductor-de-musica/icon-512x512.PNG'
 ];
 
 // Evento 'install': se dispara cuando el Service Worker se instala.
@@ -46,19 +47,21 @@ self.addEventListener('fetch', event => {
   }
 
   event.respondWith(
+    // Intenta obtener el recurso de la red primero
     fetch(event.request)
       .then(networkResponse => {
-        // Asegúrate de que la respuesta sea válida antes de cachearla
+        // Si la respuesta de la red es exitosa, la almacenamos en caché y la devolvemos
         if (networkResponse && networkResponse.ok) {
-            return caches.open(CACHE_NAME).then(cache => {
-              cache.put(event.request, networkResponse.clone());
-              return networkResponse;
-            });
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseToCache);
+          });
         }
         return networkResponse;
       })
       .catch(() => {
-        // Si la red falla, intenta servir desde la caché
+        // Si la red falla (estamos offline), busca en la caché
+        console.log('Fallo de red. Sirviendo desde caché para:', event.request.url);
         return caches.match(event.request);
       })
   );
