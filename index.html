@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -360,7 +362,7 @@
         let currentAudio = audio1;
         let standbyAudio = audio2;
         let isCrossfading = false;
-        let animationFrameId; // CORRECCIÓN: Para controlar el loop de animación
+        let animationFrameId; 
         
         function initDB(onSuccess) {
             const request = indexedDB.open('MusicPlayerDB', 2);
@@ -415,6 +417,11 @@
             function play(song, startTime = 0) {
                 if (!song || isCrossfading) return; 
                 if (!audioContext) setupWebAudioAPI();
+                
+                // AJUSTE: Reanudar el AudioContext si está suspendido
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
                 
                 audio1.pause();
                 audio2.pause();
@@ -606,9 +613,7 @@
             item.querySelector('[data-art-src]').src = song.art || 'https://placehold.co/96x96/1a1b26/1a1b26';
             
             item.addEventListener('click', (e) => {
-                // Evitar que el clic en el botón de opciones active la reproducción
                 if (e.target.closest('.options-btn')) return;
-
                 const contextList = item.closest('ul');
                 if (contextList && contextList.dataset.context === 'playlist') { 
                     playSongFromContext(song.id, 'playlist', contextList.dataset.playlistId); 
@@ -628,7 +633,6 @@
             return item;
         }
 
-        // --- CORRECCIÓN: Nueva función para renderizar la biblioteca agrupada ---
         function renderLibrary() {
             dom.libraryContent.innerHTML = '';
             if (state.library.length === 0) {
@@ -636,7 +640,6 @@
                 return;
             }
 
-            // Agrupar por Artista y Álbum
             const artists = state.library.reduce((acc, song) => {
                 (acc[song.artist] = acc[song.artist] || []).push(song);
                 return acc;
@@ -649,7 +652,6 @@
                 return acc;
             }, {});
 
-            // Función para renderizar una sección
             const createSection = (title, content) => {
                 const details = document.createElement('details');
                 const summary = document.createElement('summary');
@@ -659,7 +661,6 @@
                 return details;
             };
 
-            // 1. Sección de Canciones
             const songsContainer = document.createElement('div');
             const songsList = document.createElement('ul');
             songsList.className = 'space-y-1';
@@ -667,7 +668,6 @@
             songsContainer.appendChild(songsList);
             dom.libraryContent.appendChild(createSection('Canciones', songsContainer));
             
-            // 2. Sección de Artistas
             const artistsContainer = document.createElement('div');
             Object.keys(artists).sort().forEach(artistName => {
                 const artistDetails = document.createElement('details');
@@ -683,7 +683,6 @@
             });
             dom.libraryContent.appendChild(createSection('Artistas', artistsContainer));
 
-            // 3. Sección de Álbumes
             const albumsContainer = document.createElement('div');
              Object.keys(albums).sort().forEach(albumName => {
                 const albumDetails = document.createElement('details');
@@ -774,7 +773,6 @@
             dom.nowPlayingBackdrop.addEventListener('click', () => {
                 toggleNowPlayingList(false);
             });
-            // CORRECCIÓN: Reiniciar animación del visualizador al volver a la pestaña
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible' && state.isPlaying) {
                     drawVisualizer();
@@ -944,22 +942,15 @@
                 item.querySelector('[data-artist]').textContent = song.artist;
                 item.dataset.songId = song.id;
                 
-                // --- CORRECCIÓN: Añadir evento para reproducir la canción seleccionada ---
                 item.addEventListener('click', () => {
-                    // Mover la canción seleccionada y las que le siguen al inicio de la cola.
                     const clickedSongIndexInUpcoming = upcomingSongs.findIndex(s => s.id === song.id);
                     const newQueue = upcomingSongs.slice(clickedSongIndexInUpcoming).map(s => s.id);
-                    
-                    // Limpiar la cola manual y la de contexto para evitar duplicados
                     state.queue = [];
-                    setContext('library'); // Resetear contexto para que la cola manual tome precedencia
-                    
-                    // La primera canción de la nueva cola es la que se reproduce
+                    setContext('library');
                     const songToPlayId = newQueue.shift();
-                    state.queue = newQueue; // El resto va a la cola
-                    
+                    state.queue = newQueue;
                     playSongFromContext(songToPlayId, 'library');
-                    toggleNowPlayingList(false); // Ocultar la lista después de seleccionar
+                    toggleNowPlayingList(false);
                 });
 
                 dom.nowPlayingList.appendChild(item);
@@ -1006,11 +997,10 @@
         function formatTime(s) { const m=Math.floor(s/60),c=Math.floor(s%60); return isNaN(m)?'0:00':`${m}:${c<10?'0':''}${c}`; }
         function arrayBufferToBase64(b) { let s='';new Uint8Array(b).forEach(v=>s+=String.fromCharCode(v));return window.btoa(s); }
         function base64toBlob(base64, contentType = 'audio/mpeg') { try { const byteCharacters=atob(base64); const byteArrays=[]; for(let offset=0; offset < byteCharacters.length; offset+=512){ const slice = byteCharacters.slice(offset, offset + 512); const byteNumbers = new Array(slice.length); for (let i=0; i < slice.length; i++){ byteNumbers[i] = slice.charCodeAt(i); } const byteArray = new Uint8Array(byteNumbers); byteArrays.push(byteArray); } return new Blob(byteArrays, {type: contentType}); } catch(e) { console.error("Error al convertir base64 a Blob", e); return new Blob([]); } }
-        function updateMediaSession(s) { if(!('mediaSession'in navigator))return;navigator.mediaSession.metadata=new MediaMetadata({title:s.title,artist:s.artist,album:s.album,artwork:[{src:s.art||''}]});navigator.mediaSession.setActionHandler('play',togglePlayPause);navigator.mediaSession.setActionHandler('pause',togglePlayPause);navigator.mediaSession.setActionHandler('nexttrack', () => playNextSong(false));navigator.mediaSession.setActionHandler('previoustrack',playPrevSong);}
+        function updateMediaSession(s) { if(!('mediaSession'in navigator))return;navigator.mediaSession.metadata=new MediaMetadata({title:s.title,artist:s.artist,album:s.album,artwork:[{src:s.art||'','sizes':'512x512','type':'image/png'}]});navigator.mediaSession.setActionHandler('play',togglePlayPause);navigator.mediaSession.setActionHandler('pause',togglePlayPause);navigator.mediaSession.setActionHandler('nexttrack', () => playNextSong(false));navigator.mediaSession.setActionHandler('previoustrack',playPrevSong);}
         function toggleShuffle() { state.isShuffle = !state.isShuffle; updateControlButtonsUI(); saveState(); renderNowPlayingList(); }
         function cycleRepeatMode() { const modes = ['none', 'all', 'one']; state.repeatMode = modes[(modes.indexOf(state.repeatMode) + 1) % modes.length]; updateControlButtonsUI(); saveState(); renderNowPlayingList(); }
         
-        // --- CORRECCIÓN: Lógica mejorada para el botón de repetir ---
         function updateControlButtonsUI() {
             dom.shuffleBtn.classList.toggle('active', state.isShuffle);
             dom.repeatBtn.classList.toggle('active', state.repeatMode !== 'none');
