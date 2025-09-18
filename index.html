@@ -5,46 +5,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Reproductor de Música Definitivo</title>
 
-    <base href="/Reproductor-de-musica/">
-
-    <meta name="theme-color" content="#1a1b26" />
     <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a1b26" />
+    <link rel="apple-touch-icon" href="images/icons/icon-192x192.PMG">
     
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <link rel="apple-touch-icon" href="icon-192x192.PNG">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="MiMúsica">
-
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
 
-
     <style>
+        /* TEMA: Medianoche (Default) */
         :root { 
             --bg-primary: #1a1b26; --bg-secondary: #24283b; --bg-tertiary: #414868;
             --bg-interactive: #565f89; --text-primary: #c0caf5; --text-secondary: #a9b1d6;
             --accent-primary: #bb9af7; --accent-hover: #dbb2ff;
             --bg-glass: rgba(36, 40, 59, 0.65); --border-glass: rgba(192, 202, 245, 0.15);
         }
+        /* TEMA: Ámbar */
         .theme-sunset {
              --bg-primary: #2d1d2b; --bg-secondary: #452a42; --bg-tertiary: #6d435a;
             --bg-interactive: #9d6b7b; --text-primary: #f5e0e6; --text-secondary: #e6c0c8;
             --accent-primary: #ff7a5c; --accent-hover: #ff9e86;
             --bg-glass: rgba(69, 42, 66, 0.65); --border-glass: rgba(245, 224, 230, 0.15);
         }
+        /* TEMA: Bosque */
         .theme-ocean {
             --bg-primary: #1f2c27; --bg-secondary: #2a3b34; --bg-tertiary: #4a5c53;
             --bg-interactive: #6b8072; --text-primary: #d4e5d8; --text-secondary: #b8ccbe;
             --accent-primary: #79dcaa; --accent-hover: #93ffc7;
             --bg-glass: rgba(42, 59, 52, 0.65); --border-glass: rgba(212, 229, 216, 0.15);
         }
+
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg-primary); color: var(--text-secondary); transition: background-color 0.3s; }
+        
         .main-container { display: flex; flex-direction: column; height: 100%; width: 100%; max-width: 450px; margin: auto; background-color: var(--bg-primary); box-shadow: 0 0 20px rgba(0,0,0,0.5); }
         main { flex-grow: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; position: relative; }
+
         .glass-effect {
             background-color: var(--bg-glass);
             -webkit-backdrop-filter: blur(14px);
@@ -65,6 +64,7 @@
             backdrop-filter: blur(14px) !important;
             border: 1px solid var(--border-glass) !important;
         }
+
         h1, h2, h3, .text-primary { color: var(--text-primary); }
         .play-pause-btn, .action-btn { background-color: var(--accent-primary); color: var(--bg-primary); }
         .play-pause-btn:hover, .action-btn:hover { background-color: var(--accent-hover); }
@@ -74,16 +74,21 @@
         .hover-bg:hover { background-color: var(--bg-tertiary); }
         .list-item:hover, details[open] > summary { background-color: var(--bg-interactive); }
         .list-item.playing { background-color: var(--bg-interactive); color: var(--accent-primary); border-left: 3px solid var(--accent-primary); padding-left: calc(0.75rem - 3px); }
+        
         input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; background: var(--bg-tertiary); border-radius: 5px; outline: none; cursor: pointer; }
         input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; background: var(--text-primary); border-radius: 50%; }
+        
         .modal-backdrop { transition: opacity 0.3s ease-in-out; background-color: rgba(0,0,0,0.7); }
         .form-input { color: var(--text-primary); background-color: var(--bg-secondary); border: 1px solid var(--bg-tertiary); }
+        
         .view { display: none; height: 100%; }
         .view.active { display: flex; flex-direction: column; }
         #library-view.active, #playlists-view.active, #download-view.active { display: block; }
+        
         main::-webkit-scrollbar { width: 8px; }
         main::-webkit-scrollbar-track { background: var(--bg-secondary); }
         main::-webkit-scrollbar-thumb { background-color: var(--bg-interactive); border-radius: 10px; border: 2px solid var(--bg-secondary); }
+        
         #bottom-bar-wrapper { flex-shrink: 0; position: relative; }
         #mini-player-bar {
             transition: transform 0.3s ease-in-out;
@@ -94,6 +99,7 @@
             border-radius: 0.5rem;
         }
         #mini-player-bar.visible { transform: translateY(0); }
+
         .toast-notification {
             position: fixed;
             bottom: 80px; left: 50%;
@@ -104,6 +110,7 @@
             z-index: 1000; opacity: 0;
             transition: opacity 0.3s ease, transform 0.3s ease;
         }
+        
         #now-playing-container {
             position: absolute;
             top: 60px; /* Debajo de la barra superior */
@@ -129,6 +136,8 @@
         #now-playing-list { overflow-y: auto; }
         #now-playing-list .list-item { padding-left: 0.75rem; padding-right: 0.75rem; }
         #now-playing-backdrop { position: fixed; inset: 0; z-index: 44; }
+
+        /* --- CORRECCIÓN: Estilos para el Ecualizador --- */
         .knob-container { display: flex; flex-direction: column; align-items: center; }
         .knob {
             width: 70px; height: 70px; border-radius: 50%;
@@ -155,6 +164,8 @@
             transition: background-color 0.2s;
         }
         .eq-preset-btn:hover { background-color: var(--bg-interactive); }
+        
+        /* --- CORRECCIÓN: Estilos para la Biblioteca agrupada --- */
         #library-view details summary {
             padding: 0.75rem 0.5rem;
             cursor: pointer;
@@ -176,6 +187,7 @@
         #library-view details .sub-list-item:hover {
              background-color: var(--bg-tertiary);
         }
+
     </style>
 </head>
 <body>
@@ -316,7 +328,7 @@
             miniPlayPauseBtn: document.getElementById('mini-play-pause-btn'),
             settingsBtn: document.getElementById('settings-btn'), eqBtn: document.getElementById('eq-btn'),
             addFilesBtn: document.getElementById('add-files-btn'),
-            libraryContent: document.getElementById('library-content'),
+            libraryContent: document.getElementById('library-content'), // CORRECCIÓN: Nuevo contenedor
             playlistsView: document.getElementById('playlists-view'),
             fileInput: document.getElementById('file-input'),
             contextMenu: document.getElementById('context-menu'), contextMenuBackdrop: document.getElementById('context-menu-backdrop'),
@@ -343,7 +355,7 @@
         let currentAudio = audio1;
         let standbyAudio = audio2;
         let isCrossfading = false;
-        let animationFrameId;
+        let animationFrameId; // CORRECCIÓN: Para controlar el loop de animación
         
         function initDB(onSuccess) {
             const request = indexedDB.open('MusicPlayerDB', 2);
@@ -371,8 +383,8 @@
             if (!db) return;
             const request = db.transaction(['songs'], 'readonly').objectStore('songs').getAll();
             request.onsuccess = () => {
-                // ✅ FIX: No creamos la URL aquí para asegurar que sea válida al reabrir la app.
-                onLoad(request.result);
+                const songs = request.result.map(song => ({ ...song, url: URL.createObjectURL(base64toBlob(song.data)) }));
+                onLoad(songs);
             };
         }
 
@@ -399,24 +411,8 @@
                 if (!song || isCrossfading) return; 
                 if (!audioContext) setupWebAudioAPI();
                 
-                // ✅ FIX: Reactiva el motor de audio si el sistema lo suspendió.
-                if (audioContext.state === 'suspended') {
-                    audioContext.resume();
-                }
-                
                 audio1.pause();
                 audio2.pause();
-
-                // ✅ FIX: Crea la URL del archivo justo antes de reproducir.
-                if (!song.url && song.data) {
-                    song.url = URL.createObjectURL(base64toBlob(song.data));
-                }
-
-                if (!song.url) {
-                    console.error("No se pudo crear una URL para la canción", song.title);
-                    showToast("Error al cargar la canción");
-                    return;
-                }
 
                 currentAudio.src = song.url; 
                 currentAudio.currentTime = startTime; 
@@ -428,12 +424,7 @@
                 }).catch(e => console.error("Error al reproducir:", e));
             }
             function pause() { currentAudio.pause(); state.isPlaying = false; updateUIonPlayPause(); cancelAnimationFrame(animationFrameId); }
-            function resume() { 
-                if (audioContext && audioContext.state === 'suspended') {
-                    audioContext.resume();
-                }
-                currentAudio.play().then(() => { state.isPlaying = true; updateUIonPlayPause(); drawVisualizer(); }).catch(e => console.error("Error al reanudar:", e)); 
-            }
+            function resume() { currentAudio.play().then(() => { state.isPlaying = true; updateUIonPlayPause(); drawVisualizer(); }).catch(e => console.error("Error al reanudar:", e)); }
             
             [audio1, audio2].forEach(audio => {
                 audio.addEventListener('timeupdate', () => { 
@@ -491,10 +482,6 @@
         function crossfadeToSong(nextSong) {
             if (!nextSong || isCrossfading) return;
             isCrossfading = true;
-
-            if (!nextSong.url && nextSong.data) {
-                nextSong.url = URL.createObjectURL(base64toBlob(nextSong.data));
-            }
 
             standbyAudio.src = nextSong.url;
             standbyAudio.volume = 0;
@@ -614,6 +601,7 @@
             item.querySelector('[data-art-src]').src = song.art || 'https://placehold.co/96x96/1a1b26/1a1b26';
             
             item.addEventListener('click', (e) => {
+                // Evitar que el clic en el botón de opciones active la reproducción
                 if (e.target.closest('.options-btn')) return;
 
                 const contextList = item.closest('ul');
@@ -635,6 +623,7 @@
             return item;
         }
 
+        // --- CORRECCIÓN: Nueva función para renderizar la biblioteca agrupada ---
         function renderLibrary() {
             dom.libraryContent.innerHTML = '';
             if (state.library.length === 0) {
@@ -642,6 +631,7 @@
                 return;
             }
 
+            // Agrupar por Artista y Álbum
             const artists = state.library.reduce((acc, song) => {
                 (acc[song.artist] = acc[song.artist] || []).push(song);
                 return acc;
@@ -654,6 +644,7 @@
                 return acc;
             }, {});
 
+            // Función para renderizar una sección
             const createSection = (title, content) => {
                 const details = document.createElement('details');
                 const summary = document.createElement('summary');
@@ -663,6 +654,7 @@
                 return details;
             };
 
+            // 1. Sección de Canciones
             const songsContainer = document.createElement('div');
             const songsList = document.createElement('ul');
             songsList.className = 'space-y-1';
@@ -670,6 +662,7 @@
             songsContainer.appendChild(songsList);
             dom.libraryContent.appendChild(createSection('Canciones', songsContainer));
             
+            // 2. Sección de Artistas
             const artistsContainer = document.createElement('div');
             Object.keys(artists).sort().forEach(artistName => {
                 const artistDetails = document.createElement('details');
@@ -685,6 +678,7 @@
             });
             dom.libraryContent.appendChild(createSection('Artistas', artistsContainer));
 
+            // 3. Sección de Álbumes
             const albumsContainer = document.createElement('div');
              Object.keys(albums).sort().forEach(albumName => {
                 const albumDetails = document.createElement('details');
@@ -775,6 +769,7 @@
             dom.nowPlayingBackdrop.addEventListener('click', () => {
                 toggleNowPlayingList(false);
             });
+            // CORRECCIÓN: Reiniciar animación del visualizador al volver a la pestaña
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible' && state.isPlaying) {
                     drawVisualizer();
@@ -801,7 +796,7 @@
                 const wasEmpty = !state.currentSongId && state.library.length === 0;
                 const newSongs = await Promise.all(files.map(processFile)); 
                 newSongs.forEach(song => {
-                    if (song && !state.library.some(s => s.id === song.id)) {
+                    if (!state.library.some(s => s.id === song.id)) {
                         state.library.push(song);
                         saveSongToDB(song);
                     }
@@ -819,25 +814,21 @@
         }
         
         async function processFile(file) {
-            return new Promise((resolve) => {
+            return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    const data = arrayBufferToBase64(e.target.result);
+                    const data = arrayBufferToBase64(e.target.result); 
+                    const blob = base64toBlob(data);
                     window.jsmediatags.read(file, {
                         onSuccess: (tag) => {
                             const { title, artist, album, picture } = tag.tags;
-                            const art = picture ? `data:${picture.format};base64,${window.btoa(picture.data.reduce((acc, byte) => acc + String.fromCharCode(byte), ''))}` : null;
-                            // ✅ FIX: No creamos la URL aquí, solo los datos.
-                            resolve({ id: self.crypto.randomUUID(), title: title || file.name.replace(/\.[^/.]+$/, ""), artist: artist || 'Desconocido', album: album || 'Desconocido', art, data });
+                            resolve({ id: self.crypto.randomUUID(), title: title || file.name.replace(/\.[^/.]+$/, ""), artist: artist || 'Desconocido', album: album || 'Desconocido', art: picture ? `data:${picture.format};base64,${window.btoa(picture.data.reduce((acc, byte) => acc + String.fromCharCode(byte), ''))}` : null, data, url: URL.createObjectURL(blob) });
                         }, onError: (error) => {
-                             resolve({ id: self.crypto.randomUUID(), title: file.name.replace(/\.[^/.]+$/, ""), artist: 'Desconocido', album: 'Desconocido', art: null, data });
+                             resolve({ id: self.crypto.randomUUID(), title: file.name.replace(/\.[^/.]+$/, ""), artist: 'Desconocido', album: 'Desconocido', art: null, data, url: URL.createObjectURL(blob) })
                         }
                     });
                 }; 
-                reader.onerror = (error) => {
-                    console.error("FileReader Error:", error);
-                    resolve(null);
-                };
+                reader.onerror = (error) => reject(error);
                 reader.readAsArrayBuffer(file);
             });
         }
@@ -948,15 +939,22 @@
                 item.querySelector('[data-artist]').textContent = song.artist;
                 item.dataset.songId = song.id;
                 
+                // --- CORRECCIÓN: Añadir evento para reproducir la canción seleccionada ---
                 item.addEventListener('click', () => {
+                    // Mover la canción seleccionada y las que le siguen al inicio de la cola.
                     const clickedSongIndexInUpcoming = upcomingSongs.findIndex(s => s.id === song.id);
                     const newQueue = upcomingSongs.slice(clickedSongIndexInUpcoming).map(s => s.id);
+                    
+                    // Limpiar la cola manual y la de contexto para evitar duplicados
                     state.queue = [];
-                    setContext('library');
+                    setContext('library'); // Resetear contexto para que la cola manual tome precedencia
+                    
+                    // La primera canción de la nueva cola es la que se reproduce
                     const songToPlayId = newQueue.shift();
-                    state.queue = newQueue;
+                    state.queue = newQueue; // El resto va a la cola
+                    
                     playSongFromContext(songToPlayId, 'library');
-                    toggleNowPlayingList(false);
+                    toggleNowPlayingList(false); // Ocultar la lista después de seleccionar
                 });
 
                 dom.nowPlayingList.appendChild(item);
@@ -1003,10 +1001,11 @@
         function formatTime(s) { const m=Math.floor(s/60),c=Math.floor(s%60); return isNaN(m)?'0:00':`${m}:${c<10?'0':''}${c}`; }
         function arrayBufferToBase64(b) { let s='';new Uint8Array(b).forEach(v=>s+=String.fromCharCode(v));return window.btoa(s); }
         function base64toBlob(base64, contentType = 'audio/mpeg') { try { const byteCharacters=atob(base64); const byteArrays=[]; for(let offset=0; offset < byteCharacters.length; offset+=512){ const slice = byteCharacters.slice(offset, offset + 512); const byteNumbers = new Array(slice.length); for (let i=0; i < slice.length; i++){ byteNumbers[i] = slice.charCodeAt(i); } const byteArray = new Uint8Array(byteNumbers); byteArrays.push(byteArray); } return new Blob(byteArrays, {type: contentType}); } catch(e) { console.error("Error al convertir base64 a Blob", e); return new Blob([]); } }
-        function updateMediaSession(s) { if(!('mediaSession'in navigator))return;navigator.mediaSession.metadata=new MediaMetadata({title:s.title,artist:s.artist,album:s.album,artwork:[{src:s.art||'','sizes':'512x512','type':'image/png'}]});navigator.mediaSession.setActionHandler('play',togglePlayPause);navigator.mediaSession.setActionHandler('pause',togglePlayPause);navigator.mediaSession.setActionHandler('nexttrack', () => playNextSong(false));navigator.mediaSession.setActionHandler('previoustrack',playPrevSong);}
+        function updateMediaSession(s) { if(!('mediaSession'in navigator))return;navigator.mediaSession.metadata=new MediaMetadata({title:s.title,artist:s.artist,album:s.album,artwork:[{src:s.art||''}]});navigator.mediaSession.setActionHandler('play',togglePlayPause);navigator.mediaSession.setActionHandler('pause',togglePlayPause);navigator.mediaSession.setActionHandler('nexttrack', () => playNextSong(false));navigator.mediaSession.setActionHandler('previoustrack',playPrevSong);}
         function toggleShuffle() { state.isShuffle = !state.isShuffle; updateControlButtonsUI(); saveState(); renderNowPlayingList(); }
         function cycleRepeatMode() { const modes = ['none', 'all', 'one']; state.repeatMode = modes[(modes.indexOf(state.repeatMode) + 1) % modes.length]; updateControlButtonsUI(); saveState(); renderNowPlayingList(); }
         
+        // --- CORRECCIÓN: Lógica mejorada para el botón de repetir ---
         function updateControlButtonsUI() {
             dom.shuffleBtn.classList.toggle('active', state.isShuffle);
             dom.repeatBtn.classList.toggle('active', state.repeatMode !== 'none');
