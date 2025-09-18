@@ -345,7 +345,9 @@
         let state = {
             library: [], playlists: [], queue: [], currentContext: { type: 'library', id: null }, contextQueue: [],
             contextIndex: -1, currentSongId: null, isPlaying: false, isShuffle: false, repeatMode: 'none', volume: 1,
-            settings: { theme: 'default', crossfadeEnabled: true, crossfadeDuration: 4, eq: { bass: 0, mids: 0, treble: 0 } }
+            settings: { theme: 'default', crossfadeEnabled: true, crossfadeDuration: 4, eq: { bass: 0, mids: 0, treble: 0 } },
+            // **CAMBIO #1**: Se añade una nueva propiedad para gestionar la URL temporal del audio.
+            currentBlobUrl: null 
         };
         
         let audioContext = null, analyser = null, masterGain = null, dataArray = null, sourceNode = null, bassFilter = null, midsFilter = null, trebleFilter = null;
@@ -357,7 +359,7 @@
         let animationFrameId;
         
         function initDB(onSuccess) {
-            const request = indexedDB.open('MusicPlayerDB', 2);
+            const request = indexedDB.open('MusicPlayerDB', 3); // Se puede incrementar la versión si hay cambios de estructura
             request.onupgradeneeded = (event) => {
                 const dbInstance = event.target.result;
                 if (!dbInstance.objectStoreNames.contains('songs')) {
@@ -371,30 +373,37 @@
             request.onerror = (event) => console.error('Error con IndexedDB:', event.target.errorCode);
         }
 
+        // **CAMBIO #2**: Se guarda el objeto `song` que ahora contiene el archivo (`File`) directamente.
         function saveSongToDB(song) {
             if (!db) return;
             const transaction = db.transaction(['songs'], 'readwrite');
-            const { url, ...songToSave } = song; 
+            // Se crea un objeto limpio para guardar, excluyendo propiedades temporales.
+            const songToSave = {
+                id: song.id,
+                title: song.title,
+                artist: song.artist,
+                album: song.album,
+                art: song.art,
+                file: song.file // El archivo (Blob) se guarda directamente.
+            };
             transaction.objectStore('songs').put(songToSave);
         }
 
+        // **CAMBIO #3**: La carga desde la BD ahora es más simple, solo devuelve los objetos con los archivos.
         function loadSongsFromDB(onLoad) {
             if (!db) return;
             const request = db.transaction(['songs'], 'readonly').objectStore('songs').getAll();
             request.onsuccess = () => {
-                const songs = request.result.map(song => {
-                    return {
-                        ...song,
-                        url: `data:audio/mpeg;base64,${song.data}`
-                    };
-                });
-                onLoad(songs);
+                onLoad(request.result || []);
+            };
+            request.onerror = (event) => {
+                console.error("Error cargando canciones de la BD:", event.target.error);
+                onLoad([]);
             };
         }
 
         function setupWebAudioAPIIfNeeded() {
             if (audioContext) {
-                // Si el contexto existe pero está "dormido", lo despierta.
                 if(audioContext.state === 'suspended') audioContext.resume();
                 return;
             }
@@ -418,7 +427,6 @@
         function enableVisualizerAndEQ() {
             if (!audioContext) return; 
 
-            // **CORRECCIÓN CLAVE**: Desconectar la fuente anterior si existe, ANTES de crear una nueva.
             if (sourceNode) {
                 sourceNode.disconnect();
                 sourceNode = null;
@@ -433,40 +441,43 @@
                 masterGain.connect(analyser);
                 analyser.connect(audioContext.destination);
             } catch (e) {
-                // Este error puede ocurrir si el elemento de audio no está listo, es seguro ignorarlo temporalmente.
                 console.warn("No se pudo crear sourceNode para visualizador/EQ:", e);
                 sourceNode = null;
             }
         }
         
+        // **CAMBIO #4**: El `audioManager` ahora usa `Blob URLs` que son más eficientes.
         const audioManager = (() => {
             function play(song, startTime = 0) {
-                if (!song || isCrossfading) return; 
+                if (!song || !song.file || isCrossfading) return; 
                 
                 audio1.pause();
                 audio2.pause();
 
-                currentAudio.src = song.url; 
+                // Revocar la URL anterior para liberar memoria.
+                if (state.currentBlobUrl) {
+                    URL.revokeObjectURL(state.currentBlobUrl);
+                }
+
+                // Crear una nueva URL temporal a partir del archivo guardado.
+                state.currentBlobUrl = URL.createObjectURL(song.file);
+                currentAudio.src = state.currentBlobUrl;
+
                 currentAudio.currentTime = startTime; 
                 currentAudio.volume = state.volume;
-                const playPromise = currentAudio.play();
-
-                if (playPromise !== undefined) {
-                    playPromise.then(() => { 
-                        state.isPlaying = true; 
-                        updateUIonPlayPause(); 
-                        
-                        // Asegura que el sistema de audio esté activo y reconectado a la nueva canción.
-                        if(audioContext){ 
-                            enableVisualizerAndEQ();
-                        }
-                        drawVisualizer(); 
-                    }).catch(e => {
-                        console.error("Error al reproducir:", e);
-                        state.isPlaying = false;
-                        updateUIonPlayPause();
-                    });
-                }
+                currentAudio.play().then(() => { 
+                    state.isPlaying = true; 
+                    updateUIonPlayPause(); 
+                    
+                    if(audioContext){ 
+                        enableVisualizerAndEQ();
+                    }
+                    drawVisualizer(); 
+                }).catch(e => {
+                    console.error("Error al reproducir:", e);
+                    state.isPlaying = false;
+                    updateUIonPlayPause();
+                });
             }
             function pause() { currentAudio.pause(); state.isPlaying = false; updateUIonPlayPause(); cancelAnimationFrame(animationFrameId); }
             function resume() { 
@@ -534,10 +545,11 @@
         }
         
         function crossfadeToSong(nextSong) {
-            if (!nextSong || isCrossfading) return;
+            if (!nextSong || !nextSong.file || isCrossfading) return;
             isCrossfading = true;
 
-            standbyAudio.src = nextSong.url;
+            const nextUrl = URL.createObjectURL(nextSong.file);
+            standbyAudio.src = nextUrl;
             standbyAudio.volume = 0;
             standbyAudio.play().catch(e => console.error("Error al iniciar crossfade:", e));
 
@@ -546,6 +558,7 @@
             fadeVolume(standbyAudio, state.volume, duration);
 
             setTimeout(() => {
+                if(state.currentBlobUrl) URL.revokeObjectURL(state.currentBlobUrl);
                 currentAudio.pause();
                 currentAudio.src = "";
 
@@ -553,6 +566,7 @@
                 currentAudio = standbyAudio;
                 standbyAudio = temp;
                 
+                state.currentBlobUrl = nextUrl;
                 enableVisualizerAndEQ();
 
                 state.currentSongId = nextSong.id;
@@ -624,10 +638,13 @@
                 renderAll();
                 const lastSong = getSongById(state.currentSongId);
                 updatePlayerUI(lastSong);
-                if (lastSong) {
-                    currentAudio.src = lastSong.url;
+                if (lastSong && lastSong.file) {
+                    // Pre-carga la info de duración sin gastar mucha memoria.
+                    const tempUrl = URL.createObjectURL(lastSong.file);
+                    currentAudio.src = tempUrl;
                     currentAudio.addEventListener('loadedmetadata', () => {
                         updateProgressUI(0, currentAudio.duration);
+                        URL.revokeObjectURL(tempUrl);
                     }, { once: true });
                 }
                 updateControlButtonsUI();
@@ -820,7 +837,7 @@
             dom.settingsBtn.addEventListener('click', openSettingsModal); 
             
             dom.eqBtn.addEventListener('click', () => {
-                setupWebAudioAPIIfNeeded(); // Asegurarse de que el contexto esté listo
+                setupWebAudioAPIIfNeeded();
                 enableVisualizerAndEQ();
                 openEQModal();
             });
@@ -889,39 +906,38 @@
             }
         }
         
+        // **CAMBIO #5**: Se procesa el archivo para guardarlo como Blob, no como Base64.
         async function processFile(file) {
             return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const data = arrayBufferToBase64(e.target.result); 
-                    const songUrl = `data:audio/mpeg;base64,${data}`;
-                    window.jsmediatags.read(file, {
-                        onSuccess: (tag) => {
-                            const { title, artist, album, picture } = tag.tags;
-                            resolve({ 
-                                id: self.crypto.randomUUID(), 
-                                title: title || file.name.replace(/\.[^/.]+$/, ""), 
-                                artist: artist || 'Desconocido', 
-                                album: album || 'Desconocido', 
-                                art: picture ? `data:${picture.format};base64,${window.btoa(picture.data.reduce((acc, byte) => acc + String.fromCharCode(byte), ''))}` : null, 
-                                data, 
-                                url: songUrl 
-                            });
-                        }, onError: (error) => {
-                             resolve({ 
-                                 id: self.crypto.randomUUID(), 
-                                 title: file.name.replace(/\.[^/.]+$/, ""), 
-                                 artist: 'Desconocido', 
-                                 album: 'Desconocido', 
-                                 art: null, 
-                                 data, 
-                                 url: songUrl 
-                            });
+                window.jsmediatags.read(file, {
+                    onSuccess: (tag) => {
+                        const { title, artist, album, picture } = tag.tags;
+                        let art = null;
+                        if (picture) {
+                            const blob = new Blob([new Uint8Array(picture.data)], { type: picture.format });
+                            art = URL.createObjectURL(blob);
                         }
-                    });
-                }; 
-                reader.onerror = (error) => reject(error);
-                reader.readAsArrayBuffer(file);
+                        resolve({ 
+                            id: self.crypto.randomUUID(), 
+                            title: title || file.name.replace(/\.[^/.]+$/, ""), 
+                            artist: artist || 'Desconocido', 
+                            album: album || 'Desconocido', 
+                            art: art,
+                            file: file // Se guarda el objeto File directamente
+                        });
+                    }, 
+                    onError: (error) => {
+                        console.warn('jsmediatags error:', error);
+                         resolve({ 
+                             id: self.crypto.randomUUID(), 
+                             title: file.name.replace(/\.[^/.]+$/, ""), 
+                             artist: 'Desconocido', 
+                             album: 'Desconocido', 
+                             art: null, 
+                             file: file
+                        });
+                    }
+                });
             });
         }
         
