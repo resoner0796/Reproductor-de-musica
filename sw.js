@@ -1,11 +1,12 @@
-const CACHE_NAME = 'music-player-cache-v1';
-// Lista de archivos para precachear.
-// Se incluye el index y las librerías externas.
+const CACHE_NAME = 'music-player-cache-v2'; // Incrementamos la versión para forzar la actualización
+// Lista de archivos locales esenciales para el "App Shell".
 const urlsToCache = [
+  '/',
   'index.html',
-  'https://cdn.tailwindcss.com',
-  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
-  'https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js'
+  'manifest.json',
+  // Asegúrate que las rutas a tus iconos sean correctas
+  'images/icons/icon-192.png',
+  'images/icons/icon-512.png'
 ];
 
 // Evento 'install': se dispara cuando el Service Worker se instala.
@@ -13,27 +14,11 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Cache abierto');
-        // Agrega todos los archivos definidos a la caché.
+        console.log('Cache abierto y precargando archivos base');
         return cache.addAll(urlsToCache);
       })
   );
-});
-
-// Evento 'fetch': se dispara cada vez que la página realiza una petición de red.
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Si la respuesta está en la caché, la retornamos.
-        if (response) {
-          return response;
-        }
-        // Si no, realizamos la petición a la red.
-        return fetch(event.request);
-      }
-    )
-  );
+  self.skipWaiting(); // Forza al nuevo SW a activarse inmediatamente
 });
 
 // Evento 'activate': se dispara cuando el Service Worker se activa.
@@ -45,10 +30,35 @@ self.addEventListener('activate', event => {
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheWhitelist.indexOf(cacheName) === -1) {
+            console.log('Eliminando caché antigua:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
     })
+  );
+  return self.clients.claim(); // Toma control de las páginas abiertas
+});
+
+// Evento 'fetch': Estrategia "Network falling back to cache".
+self.addEventListener('fetch', event => {
+  // Ignoramos peticiones que no son GET
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
+  event.respondWith(
+    fetch(event.request)
+      .then(networkResponse => {
+        // Si la petición a la red tiene éxito, la cacheamos y la devolvemos
+        return caches.open(CACHE_NAME).then(cache => {
+          cache.put(event.request, networkResponse.clone());
+          return networkResponse;
+        });
+      })
+      .catch(() => {
+        // Si la petición a la red falla (estamos offline), intentamos servir desde la caché
+        return caches.match(event.request);
+      })
   );
 });
