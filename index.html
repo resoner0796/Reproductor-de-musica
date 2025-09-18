@@ -137,7 +137,6 @@
         #now-playing-list .list-item { padding-left: 0.75rem; padding-right: 0.75rem; }
         #now-playing-backdrop { position: fixed; inset: 0; z-index: 44; }
 
-        /* --- CORRECCIÓN: Estilos para el Ecualizador --- */
         .knob-container { display: flex; flex-direction: column; align-items: center; }
         .knob {
             width: 70px; height: 70px; border-radius: 50%;
@@ -165,7 +164,6 @@
         }
         .eq-preset-btn:hover { background-color: var(--bg-interactive); }
         
-        /* --- CORRECCIÓN: Estilos para la Biblioteca agrupada --- */
         #library-view details summary {
             padding: 0.75rem 0.5rem;
             cursor: pointer;
@@ -219,27 +217,27 @@
                 </div>
                 
                 <div class="controls-container flex-shrink-0 space-y-4 p-4">
-                     <div class="controls-container-inner space-y-4 p-4 glass-effect">
-                         <div class="space-y-2">
-                             <input type="range" id="progress-bar" value="0" class="w-full">
-                             <div class="flex justify-between text-xs font-mono"><span id="current-time">0:00</span><span id="duration">0:00</span></div>
-                         </div>
-                         <div class="flex items-center justify-around">
-                             <button id="shuffle-btn" class="p-2 control-btn"></button>
-                             <button id="prev-btn" class="p-2"></button>
-                             <button id="play-pause-btn" class="play-pause-btn w-16 h-16 flex items-center justify-center rounded-full shadow-lg"></button>
-                             <button id="next-btn" class="p-2"></button>
-                             <div class="flex items-center">
-                                 <button id="repeat-btn" class="p-2 control-btn"></button>
-                                 <button id="now-playing-toggle-btn" class="p-2 hover-bg rounded-full"></button>
-                             </div>
-                         </div>
-                         <div class="flex items-center justify-center space-x-2">
-                             <svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3z"></path></svg>
-                             <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="1" class="w-1/2">
-                             <svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77zM16.5 12c0-1.77-1-3.29-2.5-4.03v8.05c1.5-0.73 2.5-2.25 2.5-4.02zM3 9v6h4l5 5V4L7 9H3z"></path></svg>
-                         </div>
-                     </div>
+                        <div class="controls-container-inner space-y-4 p-4 glass-effect">
+                            <div class="space-y-2">
+                                <input type="range" id="progress-bar" value="0" class="w-full">
+                                <div class="flex justify-between text-xs font-mono"><span id="current-time">0:00</span><span id="duration">0:00</span></div>
+                            </div>
+                            <div class="flex items-center justify-around">
+                                <button id="shuffle-btn" class="p-2 control-btn"></button>
+                                <button id="prev-btn" class="p-2"></button>
+                                <button id="play-pause-btn" class="play-pause-btn w-16 h-16 flex items-center justify-center rounded-full shadow-lg"></button>
+                                <button id="next-btn" class="p-2"></button>
+                                <div class="flex items-center">
+                                    <button id="repeat-btn" class="p-2 control-btn"></button>
+                                    <button id="now-playing-toggle-btn" class="p-2 hover-bg rounded-full"></button>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-center space-x-2">
+                                <svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3z"></path></svg>
+                                <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="1" class="w-1/2">
+                                <svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77zM16.5 12c0-1.77-1-3.29-2.5-4.03v8.05c1.5-0.73 2.5-2.25 2.5-4.02zM3 9v6h4l5 5V4L7 9H3z"></path></svg>
+                            </div>
+                        </div>
                 </div>
             </div>
 
@@ -274,14 +272,14 @@
 
         <div id="bottom-bar-wrapper">
              <div id="mini-player-bar" class="px-2 glass-effect cursor-pointer">
-                 <div class="mini-player-inner p-2 flex items-center space-x-3">
-                     <img id="mini-album-art" src="https://placehold.co/96x96/1a1b26/1a1b26" alt="Mini Carátula" class="w-12 h-12 rounded-md flex-shrink-0 object-cover">
-                     <div class="flex-grow truncate">
-                         <p id="mini-song-title" class="font-semibold text-primary truncate">Sin música</p>
-                         <p id="mini-song-artist" class="text-sm truncate">Selecciona una canción</p>
-                     </div>
-                     <button id="mini-play-pause-btn" class="play-pause-btn w-12 h-12 flex items-center justify-center rounded-full shadow-lg flex-shrink-0"></button>
-                 </div>
+                   <div class="mini-player-inner p-2 flex items-center space-x-3">
+                       <img id="mini-album-art" src="https://placehold.co/96x96/1a1b26/1a1b26" alt="Mini Carátula" class="w-12 h-12 rounded-md flex-shrink-0 object-cover">
+                       <div class="flex-grow truncate">
+                           <p id="mini-song-title" class="font-semibold text-primary truncate">Sin música</p>
+                           <p id="mini-song-artist" class="text-sm truncate">Selecciona una canción</p>
+                       </div>
+                       <button id="mini-play-pause-btn" class="play-pause-btn w-12 h-12 flex items-center justify-center rounded-full shadow-lg flex-shrink-0"></button>
+                   </div>
             </div>
             <nav class="tab-bar flex justify-around p-2">
                 <button class="tab active flex flex-col items-center text-xs w-full py-1 border-b-2" data-view="player-view"></button>
@@ -310,8 +308,8 @@
     </template>
     
     <input type="file" id="file-input" accept=".mp3" multiple class="hidden">
-    <audio id="audio1" crossorigin="anonymous"></audio>
-    <audio id="audio2" crossorigin="anonymous"></audio>
+    <audio id="audio1" crossorigin="anonymous" playsinline webkit-playsinline></audio>
+    <audio id="audio2" crossorigin="anonymous" playsinline webkit-playsinline></audio>
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -328,7 +326,7 @@
             miniPlayPauseBtn: document.getElementById('mini-play-pause-btn'),
             settingsBtn: document.getElementById('settings-btn'), eqBtn: document.getElementById('eq-btn'),
             addFilesBtn: document.getElementById('add-files-btn'),
-            libraryContent: document.getElementById('library-content'), // CORRECCIÓN: Nuevo contenedor
+            libraryContent: document.getElementById('library-content'),
             playlistsView: document.getElementById('playlists-view'),
             fileInput: document.getElementById('file-input'),
             contextMenu: document.getElementById('context-menu'), contextMenuBackdrop: document.getElementById('context-menu-backdrop'),
@@ -349,13 +347,15 @@
             contextIndex: -1, currentSongId: null, isPlaying: false, isShuffle: false, repeatMode: 'none', volume: 1,
             settings: { theme: 'default', crossfadeEnabled: true, crossfadeDuration: 4, eq: { bass: 0, mids: 0, treble: 0 } }
         };
-        let audioContext, analyser, masterGain, dataArray, sourceNode1, sourceNode2, bassFilter, midsFilter, trebleFilter;
+        
+        // INTEGRACIÓN: Las variables del AudioContext se inicializan en null.
+        let audioContext = null, analyser = null, masterGain = null, dataArray = null, sourceNode = null, bassFilter = null, midsFilter = null, trebleFilter = null;
         let db; 
         
         let currentAudio = audio1;
         let standbyAudio = audio2;
         let isCrossfading = false;
-        let animationFrameId; // CORRECCIÓN: Para controlar el loop de animación
+        let animationFrameId;
         
         function initDB(onSuccess) {
             const request = indexedDB.open('MusicPlayerDB', 2);
@@ -379,6 +379,7 @@
             transaction.objectStore('songs').put(songToSave);
         }
 
+        // INTEGRACIÓN: Se asegura de usar siempre Data URI al cargar, crucial para PWA.
         function loadSongsFromDB(onLoad) {
             if (!db) return;
             const request = db.transaction(['songs'], 'readonly').objectStore('songs').getAll();
@@ -386,50 +387,80 @@
                 const songs = request.result.map(song => {
                     return {
                         ...song,
-                        url: `data:audio/mpeg;base64,${song.data}` // ✅ Usar Data URI en lugar de ObjectURL
+                        url: `data:audio/mpeg;base64,${song.data}`
                     };
                 });
                 onLoad(songs);
             };
         }
 
-        function setupWebAudioAPI() {
+        // INTEGRACIÓN: Nueva lógica para manejar el AudioContext solo cuando es necesario.
+        function setupWebAudioAPIIfNeeded() {
             if (audioContext) return;
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                analyser = audioContext.createAnalyser(); masterGain = audioContext.createGain();
+                analyser = audioContext.createAnalyser(); 
+                masterGain = audioContext.createGain();
                 bassFilter = audioContext.createBiquadFilter(); bassFilter.type = "lowshelf"; bassFilter.frequency.value = 250;
                 midsFilter = audioContext.createBiquadFilter(); midsFilter.type = "peaking"; midsFilter.frequency.value = 1000; midsFilter.Q.value = 1;
                 trebleFilter = audioContext.createBiquadFilter(); trebleFilter.type = "highshelf"; trebleFilter.frequency.value = 4000;
-                sourceNode1 = audioContext.createMediaElementSource(audio1); sourceNode2 = audioContext.createMediaElementSource(audio2);
-                sourceNode1.connect(bassFilter); sourceNode2.connect(bassFilter);
-                bassFilter.connect(midsFilter); midsFilter.connect(trebleFilter);
-                trebleFilter.connect(masterGain);
-                masterGain.connect(analyser); analyser.connect(audioContext.destination);
-                analyser.fftSize = 256; dataArray = new Uint8Array(analyser.frequencyBinCount);
+                
+                analyser.fftSize = 256; 
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
                 applyEQ(); 
-            } catch (e) { console.error("Web Audio API no soportada", e); }
+            } catch (e) { 
+                console.error("Web Audio API no soportada", e); 
+                audioContext = null;
+            }
+        }
+        
+        // INTEGRACIÓN: Función para conectar el elemento <audio> al grafo del AudioContext.
+        function enableVisualizerAndEQ() {
+            setupWebAudioAPIIfNeeded();
+            if (!audioContext || sourceNode) return; // Si no hay contexto o ya está conectado, no hacer nada
+
+            try {
+                sourceNode = audioContext.createMediaElementSource(currentAudio);
+                sourceNode.connect(bassFilter);
+                bassFilter.connect(midsFilter);
+                midsFilter.connect(trebleFilter);
+                trebleFilter.connect(masterGain);
+                masterGain.connect(analyser);
+                analyser.connect(audioContext.destination); // Conectar a la salida
+            } catch (e) {
+                console.warn("No se pudo crear sourceNode para visualizador/EQ:", e);
+                sourceNode = null; // Reseteamos si falla
+            }
         }
 
+        // INTEGRACIÓN: El audioManager ahora es más simple y no inicia el AudioContext por defecto.
         const audioManager = (() => {
             function play(song, startTime = 0) {
                 if (!song || isCrossfading) return; 
-                if (!audioContext) setupWebAudioAPI();
                 
                 audio1.pause();
                 audio2.pause();
 
-                
                 if (song.data) {
-                    // Aseguramos URL válida siempre en PWA iOS
                     song.url = `data:audio/mpeg;base64,${song.data}`;
                 }
+
                 currentAudio.src = song.url; 
                 currentAudio.currentTime = startTime; 
                 currentAudio.volume = state.volume;
                 currentAudio.play().then(() => { 
                     state.isPlaying = true; 
                     updateUIonPlayPause(); 
+                    
+                    // Si el audioContext ya está activo (p.ej. el EQ se abrió antes), reconectamos la fuente
+                    if (sourceNode) {
+                        sourceNode.disconnect();
+                        sourceNode = null;
+                    }
+                    if(audioContext){
+                        enableVisualizerAndEQ();
+                    }
+
                     drawVisualizer(); 
                 }).catch(e => console.error("Error al reproducir:", e));
             }
@@ -509,6 +540,13 @@
                 currentAudio = standbyAudio;
                 standbyAudio = temp;
                 
+                // Si el AudioContext está activo, hay que cambiar la fuente de audio
+                if(sourceNode) {
+                    sourceNode.disconnect();
+                    sourceNode = null;
+                    enableVisualizerAndEQ();
+                }
+
                 state.currentSongId = nextSong.id;
                 updatePlayerUI(nextSong);
                 updateMediaSession(nextSong);
@@ -611,7 +649,6 @@
             item.querySelector('[data-art-src]').src = song.art || 'https://placehold.co/96x96/1a1b26/1a1b26';
             
             item.addEventListener('click', (e) => {
-                // Evitar que el clic en el botón de opciones active la reproducción
                 if (e.target.closest('.options-btn')) return;
 
                 const contextList = item.closest('ul');
@@ -633,7 +670,6 @@
             return item;
         }
 
-        // --- CORRECCIÓN: Nueva función para renderizar la biblioteca agrupada ---
         function renderLibrary() {
             dom.libraryContent.innerHTML = '';
             if (state.library.length === 0) {
@@ -641,7 +677,6 @@
                 return;
             }
 
-            // Agrupar por Artista y Álbum
             const artists = state.library.reduce((acc, song) => {
                 (acc[song.artist] = acc[song.artist] || []).push(song);
                 return acc;
@@ -654,7 +689,6 @@
                 return acc;
             }, {});
 
-            // Función para renderizar una sección
             const createSection = (title, content) => {
                 const details = document.createElement('details');
                 const summary = document.createElement('summary');
@@ -664,7 +698,6 @@
                 return details;
             };
 
-            // 1. Sección de Canciones
             const songsContainer = document.createElement('div');
             const songsList = document.createElement('ul');
             songsList.className = 'space-y-1';
@@ -672,7 +705,6 @@
             songsContainer.appendChild(songsList);
             dom.libraryContent.appendChild(createSection('Canciones', songsContainer));
             
-            // 2. Sección de Artistas
             const artistsContainer = document.createElement('div');
             Object.keys(artists).sort().forEach(artistName => {
                 const artistDetails = document.createElement('details');
@@ -688,7 +720,6 @@
             });
             dom.libraryContent.appendChild(createSection('Artistas', artistsContainer));
 
-            // 3. Sección de Álbumes
             const albumsContainer = document.createElement('div');
              Object.keys(albums).sort().forEach(albumName => {
                 const albumDetails = document.createElement('details');
@@ -737,8 +768,9 @@
         }
 
         function togglePlayPause() {
-            if (!audioContext) setupWebAudioAPI();
-            if (audioContext.state === 'suspended') audioContext.resume();
+            // INTEGRACIÓN: Resumir el AudioContext si está suspendido.
+            if (audioContext && audioContext.state === 'suspended') audioContext.resume();
+            
             if (state.isPlaying) audioManager.pause(); 
             else if (state.currentSongId) audioManager.resume();
             else if (state.library.length > 0) playSongFromContext(state.library[0].id, 'library');
@@ -762,7 +794,13 @@
             dom.addFilesBtn.addEventListener('click', () => dom.fileInput.click());
             dom.fileInput.addEventListener('change', handleFileSelect);
             dom.settingsBtn.addEventListener('click', openSettingsModal); 
-            dom.eqBtn.addEventListener('click', openEQModal);
+            
+            // INTEGRACIÓN: Al hacer clic en EQ, se activa el AudioContext.
+            dom.eqBtn.addEventListener('click', () => {
+                openEQModal();
+                enableVisualizerAndEQ();
+            });
+
             dom.contextMenuBackdrop.addEventListener('click', hideContextMenu);
             dom.convertBtn.addEventListener('click', () => {
                 const link = dom.youtubeLinkInput.value.trim();
@@ -779,9 +817,15 @@
             dom.nowPlayingBackdrop.addEventListener('click', () => {
                 toggleNowPlayingList(false);
             });
-            // CORRECCIÓN: Reiniciar animación del visualizador al volver a la pestaña
+
+            // INTEGRACIÓN: Evento para reanudar el audio al volver a la app.
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible' && state.isPlaying) {
+                    if (audioContext && audioContext.state === 'suspended') {
+                        audioContext.resume().catch(e => console.error("Error al reanudar AudioContext:", e));
+                    }
+                    // Forzar play para reconectar el audio nativo, especialmente en iOS PWA
+                    currentAudio.play().catch(e => {}); 
                     drawVisualizer();
                 }
             });
@@ -823,18 +867,35 @@
             }
         }
         
+        // INTEGRACIÓN: Se asegura de que la URL final del objeto sea un Data URI.
         async function processFile(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const data = arrayBufferToBase64(e.target.result); 
-                    const blob = base64toBlob(data);
+                    const songUrl = `data:audio/mpeg;base64,${data}`;
                     window.jsmediatags.read(file, {
                         onSuccess: (tag) => {
                             const { title, artist, album, picture } = tag.tags;
-                            resolve({ id: self.crypto.randomUUID(), title: title || file.name.replace(/\.[^/.]+$/, ""), artist: artist || 'Desconocido', album: album || 'Desconocido', art: picture ? `data:${picture.format};base64,${window.btoa(picture.data.reduce((acc, byte) => acc + String.fromCharCode(byte), ''))}` : null, data, url: URL.createObjectURL(blob) });
+                            resolve({ 
+                                id: self.crypto.randomUUID(), 
+                                title: title || file.name.replace(/\.[^/.]+$/, ""), 
+                                artist: artist || 'Desconocido', 
+                                album: album || 'Desconocido', 
+                                art: picture ? `data:${picture.format};base64,${window.btoa(picture.data.reduce((acc, byte) => acc + String.fromCharCode(byte), ''))}` : null, 
+                                data, 
+                                url: songUrl 
+                            });
                         }, onError: (error) => {
-                             resolve({ id: self.crypto.randomUUID(), title: file.name.replace(/\.[^/.]+$/, ""), artist: 'Desconocido', album: 'Desconocido', art: null, data, url: URL.createObjectURL(blob) })
+                             resolve({ 
+                                 id: self.crypto.randomUUID(), 
+                                 title: file.name.replace(/\.[^/.]+$/, ""), 
+                                 artist: 'Desconocido', 
+                                 album: 'Desconocido', 
+                                 art: null, 
+                                 data, 
+                                 url: songUrl 
+                            });
                         }
                     });
                 }; 
@@ -949,22 +1010,18 @@
                 item.querySelector('[data-artist]').textContent = song.artist;
                 item.dataset.songId = song.id;
                 
-                // --- CORRECCIÓN: Añadir evento para reproducir la canción seleccionada ---
                 item.addEventListener('click', () => {
-                    // Mover la canción seleccionada y las que le siguen al inicio de la cola.
                     const clickedSongIndexInUpcoming = upcomingSongs.findIndex(s => s.id === song.id);
                     const newQueue = upcomingSongs.slice(clickedSongIndexInUpcoming).map(s => s.id);
                     
-                    // Limpiar la cola manual y la de contexto para evitar duplicados
                     state.queue = [];
-                    setContext('library'); // Resetear contexto para que la cola manual tome precedencia
+                    setContext('library'); 
                     
-                    // La primera canción de la nueva cola es la que se reproduce
                     const songToPlayId = newQueue.shift();
-                    state.queue = newQueue; // El resto va a la cola
+                    state.queue = newQueue;
                     
                     playSongFromContext(songToPlayId, 'library');
-                    toggleNowPlayingList(false); // Ocultar la lista después de seleccionar
+                    toggleNowPlayingList(false);
                 });
 
                 dom.nowPlayingList.appendChild(item);
@@ -1015,7 +1072,6 @@
         function toggleShuffle() { state.isShuffle = !state.isShuffle; updateControlButtonsUI(); saveState(); renderNowPlayingList(); }
         function cycleRepeatMode() { const modes = ['none', 'all', 'one']; state.repeatMode = modes[(modes.indexOf(state.repeatMode) + 1) % modes.length]; updateControlButtonsUI(); saveState(); renderNowPlayingList(); }
         
-        // --- CORRECCIÓN: Lógica mejorada para el botón de repetir ---
         function updateControlButtonsUI() {
             dom.shuffleBtn.classList.toggle('active', state.isShuffle);
             dom.repeatBtn.classList.toggle('active', state.repeatMode !== 'none');
