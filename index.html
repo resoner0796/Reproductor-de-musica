@@ -346,11 +346,10 @@
             library: [], playlists: [], queue: [], currentContext: { type: 'library', id: null }, contextQueue: [],
             contextIndex: -1, currentSongId: null, isPlaying: false, isShuffle: false, repeatMode: 'none', volume: 1,
             settings: { theme: 'default', crossfadeEnabled: true, crossfadeDuration: 4, eq: { bass: 0, mids: 0, treble: 0 } },
-            // **CAMBIO #1**: Se añade una nueva propiedad para gestionar la URL temporal del audio.
             currentBlobUrl: null 
         };
         
-        let audioContext = null, analyser = null, masterGain = null, dataArray = null, sourceNode = null, bassFilter = null, midsFilter = null, trebleFilter = null;
+        let audioContext = null, analyser = null, masterGain = null, dataArray = null, sourceNode1 = null, sourceNode2 = null, bassFilter = null, midsFilter = null, trebleFilter = null;
         let db; 
         
         let currentAudio = audio1;
@@ -359,7 +358,7 @@
         let animationFrameId;
         
         function initDB(onSuccess) {
-            const request = indexedDB.open('MusicPlayerDB', 3); // Se puede incrementar la versión si hay cambios de estructura
+            const request = indexedDB.open('MusicPlayerDB', 3);
             request.onupgradeneeded = (event) => {
                 const dbInstance = event.target.result;
                 if (!dbInstance.objectStoreNames.contains('songs')) {
@@ -373,23 +372,20 @@
             request.onerror = (event) => console.error('Error con IndexedDB:', event.target.errorCode);
         }
 
-        // **CAMBIO #2**: Se guarda el objeto `song` que ahora contiene el archivo (`File`) directamente.
         function saveSongToDB(song) {
             if (!db) return;
             const transaction = db.transaction(['songs'], 'readwrite');
-            // Se crea un objeto limpio para guardar, excluyendo propiedades temporales.
             const songToSave = {
                 id: song.id,
                 title: song.title,
                 artist: song.artist,
                 album: song.album,
                 art: song.art,
-                file: song.file // El archivo (Blob) se guarda directamente.
+                file: song.file 
             };
             transaction.objectStore('songs').put(songToSave);
         }
 
-        // **CAMBIO #3**: La carga desde la BD ahora es más simple, solo devuelve los objetos con los archivos.
         function loadSongsFromDB(onLoad) {
             if (!db) return;
             const request = db.transaction(['songs'], 'readonly').objectStore('songs').getAll();
@@ -401,7 +397,8 @@
                 onLoad([]);
             };
         }
-
+        
+        // **CORRECCIÓN #1**: Se crea el grafo de audio de forma permanente para AMBOS elementos de audio.
         function setupWebAudioAPIIfNeeded() {
             if (audioContext) {
                 if(audioContext.state === 'suspended') audioContext.resume();
@@ -417,6 +414,24 @@
                 
                 analyser.fftSize = 256; 
                 dataArray = new Uint8Array(analyser.frequencyBinCount);
+                
+                // Crear fuentes para AMBOS elementos de audio desde el principio
+                sourceNode1 = audioContext.createMediaElementSource(audio1);
+                sourceNode2 = audioContext.createMediaElementSource(audio2);
+
+                // Conectar ambos al mismo grafo de efectos y análisis
+                const connectSource = (source) => {
+                    source.connect(bassFilter)
+                          .connect(midsFilter)
+                          .connect(trebleFilter)
+                          .connect(masterGain)
+                          .connect(analyser)
+                          .connect(audioContext.destination);
+                };
+                
+                connectSource(sourceNode1);
+                connectSource(sourceNode2);
+                
                 applyEQ(); 
             } catch (e) { 
                 console.error("Web Audio API no soportada", e); 
@@ -424,29 +439,6 @@
             }
         }
         
-        function enableVisualizerAndEQ() {
-            if (!audioContext) return; 
-
-            if (sourceNode) {
-                sourceNode.disconnect();
-                sourceNode = null;
-            }
-
-            try {
-                sourceNode = audioContext.createMediaElementSource(currentAudio);
-                sourceNode.connect(bassFilter);
-                bassFilter.connect(midsFilter);
-                midsFilter.connect(trebleFilter);
-                trebleFilter.connect(masterGain);
-                masterGain.connect(analyser);
-                analyser.connect(audioContext.destination);
-            } catch (e) {
-                console.warn("No se pudo crear sourceNode para visualizador/EQ:", e);
-                sourceNode = null;
-            }
-        }
-        
-        // **CAMBIO #4**: El `audioManager` ahora usa `Blob URLs` que son más eficientes.
         const audioManager = (() => {
             function play(song, startTime = 0) {
                 if (!song || !song.file || isCrossfading) return; 
@@ -454,30 +446,28 @@
                 audio1.pause();
                 audio2.pause();
 
-                // Revocar la URL anterior para liberar memoria.
                 if (state.currentBlobUrl) {
                     URL.revokeObjectURL(state.currentBlobUrl);
                 }
 
-                // Crear una nueva URL temporal a partir del archivo guardado.
                 state.currentBlobUrl = URL.createObjectURL(song.file);
                 currentAudio.src = state.currentBlobUrl;
 
                 currentAudio.currentTime = startTime; 
                 currentAudio.volume = state.volume;
-                currentAudio.play().then(() => { 
-                    state.isPlaying = true; 
-                    updateUIonPlayPause(); 
-                    
-                    if(audioContext){ 
-                        enableVisualizerAndEQ();
-                    }
-                    drawVisualizer(); 
-                }).catch(e => {
-                    console.error("Error al reproducir:", e);
-                    state.isPlaying = false;
-                    updateUIonPlayPause();
-                });
+                const playPromise = currentAudio.play();
+
+                if (playPromise !== undefined) {
+                    playPromise.then(() => { 
+                        state.isPlaying = true; 
+                        updateUIonPlayPause(); 
+                        drawVisualizer(); 
+                    }).catch(e => {
+                        console.error("Error al reproducir:", e);
+                        state.isPlaying = false;
+                        updateUIonPlayPause();
+                    });
+                }
             }
             function pause() { currentAudio.pause(); state.isPlaying = false; updateUIonPlayPause(); cancelAnimationFrame(animationFrameId); }
             function resume() { 
@@ -567,7 +557,6 @@
                 standbyAudio = temp;
                 
                 state.currentBlobUrl = nextUrl;
-                enableVisualizerAndEQ();
 
                 state.currentSongId = nextSong.id;
                 updatePlayerUI(nextSong);
@@ -639,12 +628,12 @@
                 const lastSong = getSongById(state.currentSongId);
                 updatePlayerUI(lastSong);
                 if (lastSong && lastSong.file) {
-                    // Pre-carga la info de duración sin gastar mucha memoria.
                     const tempUrl = URL.createObjectURL(lastSong.file);
                     currentAudio.src = tempUrl;
                     currentAudio.addEventListener('loadedmetadata', () => {
                         updateProgressUI(0, currentAudio.duration);
                         URL.revokeObjectURL(tempUrl);
+                        currentAudio.src = ""; // Limpiar para no mantenerlo cargado
                     }, { once: true });
                 }
                 updateControlButtonsUI();
@@ -838,7 +827,6 @@
             
             dom.eqBtn.addEventListener('click', () => {
                 setupWebAudioAPIIfNeeded();
-                enableVisualizerAndEQ();
                 openEQModal();
             });
 
@@ -906,9 +894,8 @@
             }
         }
         
-        // **CAMBIO #5**: Se procesa el archivo para guardarlo como Blob, no como Base64.
         async function processFile(file) {
-            return new Promise((resolve, reject) => {
+            return new Promise((resolve) => {
                 window.jsmediatags.read(file, {
                     onSuccess: (tag) => {
                         const { title, artist, album, picture } = tag.tags;
@@ -923,7 +910,7 @@
                             artist: artist || 'Desconocido', 
                             album: album || 'Desconocido', 
                             art: art,
-                            file: file // Se guarda el objeto File directamente
+                            file: file 
                         });
                     }, 
                     onError: (error) => {
