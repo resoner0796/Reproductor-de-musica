@@ -208,7 +208,7 @@
                 <div class="player-view-content flex-grow flex flex-col justify-center items-center space-y-4 p-4">
                     <div class="relative aspect-square w-full max-w-xs rounded-xl shadow-lg overflow-hidden glass-effect">
                         <img id="album-art" src="https://placehold.co/400x400/1a1b26/1a1b26" alt="Carátula" class="w-full h-full object-cover">
-                        <canvas id="visualizer" class="absolute inset-0 w-full h-full"></canvas>
+                        <canvas id="visualizer" class="absolute inset-0 w-full h-full opacity-60"></canvas>
                     </div>
                     <div class="text-center w-full px-4">
                         <h2 id="song-title" class="text-2xl font-bold truncate">Bienvenido</h2>
@@ -348,6 +348,7 @@
             settings: { theme: 'default', crossfadeEnabled: true, crossfadeDuration: 4, eq: { bass: 0, mids: 0, treble: 0 } }
         };
         
+        // INTEGRACIÓN: Las variables del AudioContext se inicializan en null.
         let audioContext = null, analyser = null, masterGain = null, dataArray = null, sourceNode = null, bassFilter = null, midsFilter = null, trebleFilter = null;
         let db; 
         
@@ -378,6 +379,7 @@
             transaction.objectStore('songs').put(songToSave);
         }
 
+        // INTEGRACIÓN: Se asegura de usar siempre Data URI al cargar, crucial para PWA.
         function loadSongsFromDB(onLoad) {
             if (!db) return;
             const request = db.transaction(['songs'], 'readonly').objectStore('songs').getAll();
@@ -392,6 +394,7 @@
             };
         }
 
+        // INTEGRACIÓN: Nueva lógica para manejar el AudioContext solo cuando es necesario.
         function setupWebAudioAPIIfNeeded() {
             if (audioContext) return;
             try {
@@ -411,13 +414,10 @@
             }
         }
         
+        // INTEGRACIÓN: Función para conectar el elemento <audio> al grafo del AudioContext.
         function enableVisualizerAndEQ() {
             setupWebAudioAPIIfNeeded();
-            if (!audioContext) return;
-            
-            if (sourceNode) {
-                sourceNode.disconnect();
-            }
+            if (!audioContext || sourceNode) return; // Si no hay contexto o ya está conectado, no hacer nada
 
             try {
                 sourceNode = audioContext.createMediaElementSource(currentAudio);
@@ -426,13 +426,14 @@
                 midsFilter.connect(trebleFilter);
                 trebleFilter.connect(masterGain);
                 masterGain.connect(analyser);
-                analyser.connect(audioContext.destination);
+                analyser.connect(audioContext.destination); // Conectar a la salida
             } catch (e) {
                 console.warn("No se pudo crear sourceNode para visualizador/EQ:", e);
-                sourceNode = null;
+                sourceNode = null; // Reseteamos si falla
             }
         }
 
+        // INTEGRACIÓN: El audioManager ahora es más simple y no inicia el AudioContext por defecto.
         const audioManager = (() => {
             function play(song, startTime = 0) {
                 if (!song || isCrossfading) return; 
@@ -451,26 +452,20 @@
                     state.isPlaying = true; 
                     updateUIonPlayPause(); 
                     
-                    enableVisualizerAndEQ();
-                    drawVisualizer(); 
+                    // Si el audioContext ya está activo (p.ej. el EQ se abrió antes), reconectamos la fuente
+                    if (sourceNode) {
+                        sourceNode.disconnect();
+                        sourceNode = null;
+                    }
+                    if(audioContext){
+                        enableVisualizerAndEQ();
+                    }
 
-                }).catch(e => {
-                    console.error("Error al reproducir:", e)
-                    state.isPlaying = false;
-                    updateUIonPlayPause();
-                });
+                    drawVisualizer(); 
+                }).catch(e => console.error("Error al reproducir:", e));
             }
             function pause() { currentAudio.pause(); state.isPlaying = false; updateUIonPlayPause(); cancelAnimationFrame(animationFrameId); }
-            function resume() { 
-                if (audioContext && audioContext.state === 'suspended') {
-                    audioContext.resume();
-                }
-                currentAudio.play().then(() => { 
-                    state.isPlaying = true; 
-                    updateUIonPlayPause(); 
-                    drawVisualizer(); 
-                }).catch(e => console.error("Error al reanudar:", e)); 
-            }
+            function resume() { currentAudio.play().then(() => { state.isPlaying = true; updateUIonPlayPause(); drawVisualizer(); }).catch(e => console.error("Error al reanudar:", e)); }
             
             [audio1, audio2].forEach(audio => {
                 audio.addEventListener('timeupdate', () => { 
@@ -545,7 +540,12 @@
                 currentAudio = standbyAudio;
                 standbyAudio = temp;
                 
-                enableVisualizerAndEQ();
+                // Si el AudioContext está activo, hay que cambiar la fuente de audio
+                if(sourceNode) {
+                    sourceNode.disconnect();
+                    sourceNode = null;
+                    enableVisualizerAndEQ();
+                }
 
                 state.currentSongId = nextSong.id;
                 updatePlayerUI(nextSong);
@@ -616,14 +616,6 @@
                 renderAll();
                 const lastSong = getSongById(state.currentSongId);
                 updatePlayerUI(lastSong);
-
-                if (lastSong) {
-                    currentAudio.src = lastSong.url;
-                    currentAudio.addEventListener('loadedmetadata', () => {
-                        updateProgressUI(0, currentAudio.duration);
-                    }, { once: true });
-                }
-
                 updateControlButtonsUI();
                 updateMiniPlayerVisibility();
                 renderNowPlayingList();
@@ -766,15 +758,6 @@
             if (isNaN(duration)) return;
             dom.progressBar.value = (currentTime / duration) * 100;
             dom.currentTime.textContent = formatTime(currentTime); dom.duration.textContent = formatTime(duration);
-            
-            // **CORRECCIÓN**: Actualiza el estado de la posición para la Media Session.
-            if ('mediaSession' in navigator && navigator.mediaSession.metadata) {
-                navigator.mediaSession.setPositionState({
-                    duration: duration,
-                    playbackRate: currentAudio.playbackRate,
-                    position: currentTime
-                });
-            }
         }
 
         function updateUIonPlayPause() {
@@ -785,17 +768,12 @@
         }
 
         function togglePlayPause() {
-            if (audioContext && audioContext.state === 'suspended') {
-                 audioContext.resume();
-            }
+            // INTEGRACIÓN: Resumir el AudioContext si está suspendido.
+            if (audioContext && audioContext.state === 'suspended') audioContext.resume();
             
-            if (state.isPlaying) {
-                audioManager.pause(); 
-            } else if (state.currentSongId) {
-                audioManager.resume();
-            } else if (state.library.length > 0) {
-                playSongFromContext(state.library[0].id, 'library');
-            }
+            if (state.isPlaying) audioManager.pause(); 
+            else if (state.currentSongId) audioManager.resume();
+            else if (state.library.length > 0) playSongFromContext(state.library[0].id, 'library');
         }
 
         function setupEventListeners() {
@@ -817,6 +795,7 @@
             dom.fileInput.addEventListener('change', handleFileSelect);
             dom.settingsBtn.addEventListener('click', openSettingsModal); 
             
+            // INTEGRACIÓN: Al hacer clic en EQ, se activa el AudioContext.
             dom.eqBtn.addEventListener('click', () => {
                 openEQModal();
                 enableVisualizerAndEQ();
@@ -839,11 +818,13 @@
                 toggleNowPlayingList(false);
             });
 
+            // INTEGRACIÓN: Evento para reanudar el audio al volver a la app.
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible' && state.isPlaying) {
                     if (audioContext && audioContext.state === 'suspended') {
                         audioContext.resume().catch(e => console.error("Error al reanudar AudioContext:", e));
                     }
+                    // Forzar play para reconectar el audio nativo, especialmente en iOS PWA
                     currentAudio.play().catch(e => {}); 
                     drawVisualizer();
                 }
@@ -886,6 +867,7 @@
             }
         }
         
+        // INTEGRACIÓN: Se asegura de que la URL final del objeto sea un Data URI.
         async function processFile(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -1082,53 +1064,11 @@
         function hideContextMenu() { dom.contextMenu.classList.add('hidden'); dom.contextMenuBackdrop.classList.add('hidden'); }
         function openSettingsModal() { const modalContent = `<div class="flex justify-between items-center mb-2"><h2 class="text-2xl font-bold">Configuración</h2><button id="close-settings-btn" class="p-2 rounded-full hover-bg text-2xl leading-none">&times;</button></div><div class="space-y-2"><div class="flex items-center justify-between py-2"><label for="crossfade-toggle" class="text-sm">Crossfade Automático</label><div class="flex items-center space-x-3"><span id="crossfade-duration-label" class="text-xs w-12 text-center"></span><input type="range" id="crossfade-duration-slider" min="1" max="10" class="w-24"><input type="checkbox" id="crossfade-toggle" class="form-checkbox h-5 w-5 rounded bg-slate-700 border-slate-600 text-accent-primary focus:ring-accent-primary"></div></div> <div class="py-2"> <label class="text-sm">Tema</label> <div id="theme-selector" class="flex items-center space-x-4 py-2"><button data-theme="default" class="theme-btn w-8 h-8 rounded-full bg-[#1a1b26] border-2 border-slate-500"></button><button data-theme="sunset" class="theme-btn w-8 h-8 rounded-full bg-[#2d1d2b] border-2 border-slate-500"></button><button data-theme="ocean" class="theme-btn w-8 h-8 rounded-full bg-[#1f2c27] border-2 border-slate-500"></button></div></div></div>`; const modal = showModal(modalContent); modal.querySelector('#close-settings-btn').addEventListener('click', closeModal); const crossfadeToggle = modal.querySelector('#crossfade-toggle'); const crossfadeSlider = modal.querySelector('#crossfade-duration-slider'); const crossfadeLabel = modal.querySelector('#crossfade-duration-label'); crossfadeToggle.checked = state.settings.crossfadeEnabled; crossfadeSlider.value = state.settings.crossfadeDuration; crossfadeLabel.textContent = `${state.settings.crossfadeDuration}s`; crossfadeToggle.addEventListener('change', (e) => { state.settings.crossfadeEnabled = e.target.checked; saveState(); }); crossfadeSlider.addEventListener('input', (e) => { state.settings.crossfadeDuration = parseInt(e.target.value); crossfadeLabel.textContent = `${state.settings.crossfadeDuration}s`; }); crossfadeSlider.addEventListener('change', saveState); modal.querySelectorAll('.theme-btn').forEach(btn => btn.addEventListener('click', (e) => { state.settings.theme = e.currentTarget.dataset.theme; applyTheme(); saveState(); })); }
         function applyTheme(){ dom.body.className = `theme-${state.settings.theme || 'default'}`; }
-        
-        function drawVisualizer() { 
-            if (!state.isPlaying || !analyser) { 
-                cancelAnimationFrame(animationFrameId);
-                dom.canvasCtx.clearRect(0, 0, dom.visualizerCanvas.width, dom.visualizerCanvas.height);
-                return;
-            } 
-            animationFrameId = requestAnimationFrame(drawVisualizer); 
-            analyser.getByteFrequencyData(dataArray); 
-            
-            dom.canvasCtx.clearRect(0, 0, dom.visualizerCanvas.width, dom.visualizerCanvas.height);
-
-            const barWidth = (dom.visualizerCanvas.width / dataArray.length) * 2.5;
-            let x = 0;
-            for (let i = 0; i < dataArray.length; i++) {
-                const barHeight = dataArray[i] / 1.5;
-                
-                dom.canvasCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent-primary');
-                dom.canvasCtx.fillRect(x, dom.visualizerCanvas.height - barHeight, barWidth, barHeight);
-                x += barWidth + 1;
-            } 
-        }
-
+        function drawVisualizer() { if (!state.isPlaying || !analyser) { cancelAnimationFrame(animationFrameId); dom.canvasCtx.clearRect(0, 0, dom.visualizerCanvas.width, dom.visualizerCanvas.height); return; } animationFrameId = requestAnimationFrame(drawVisualizer); analyser.getByteFrequencyData(dataArray); dom.canvasCtx.fillStyle = 'rgba(0, 0, 0, 0.1)'; dom.canvasCtx.fillRect(0, 0, dom.visualizerCanvas.width, dom.visualizerCanvas.height); const barWidth = (dom.visualizerCanvas.width / dataArray.length) * 2.5; let x = 0; for (let i = 0; i < dataArray.length; i++) { const barHeight = dataArray[i] / 2; dom.canvasCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent-primary') + '99'; dom.canvasCtx.fillRect(x, dom.visualizerCanvas.height - barHeight, barWidth, barHeight); x += barWidth + 1; } }
         function formatTime(s) { const m=Math.floor(s/60),c=Math.floor(s%60); return isNaN(m)?'0:00':`${m}:${c<10?'0':''}${c}`; }
         function arrayBufferToBase64(b) { let s='';new Uint8Array(b).forEach(v=>s+=String.fromCharCode(v));return window.btoa(s); }
         function base64toBlob(base64, contentType = 'audio/mpeg') { try { const byteCharacters=atob(base64); const byteArrays=[]; for(let offset=0; offset < byteCharacters.length; offset+=512){ const slice = byteCharacters.slice(offset, offset + 512); const byteNumbers = new Array(slice.length); for (let i=0; i < slice.length; i++){ byteNumbers[i] = slice.charCodeAt(i); } const byteArray = new Uint8Array(byteNumbers); byteArrays.push(byteArray); } return new Blob(byteArrays, {type: contentType}); } catch(e) { console.error("Error al convertir base64 a Blob", e); return new Blob([]); } }
-        
-        function updateMediaSession(song) {
-            if (!('mediaSession' in navigator)) return;
-            
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: song.title,
-                artist: song.artist,
-                album: song.album,
-                artwork: [{ src: song.art || '' }]
-            });
-
-            navigator.mediaSession.setActionHandler('play', togglePlayPause);
-            navigator.mediaSession.setActionHandler('pause', togglePlayPause);
-            navigator.mediaSession.setActionHandler('nexttrack', () => playNextSong(false));
-            navigator.mediaSession.setActionHandler('previoustrack', playPrevSong);
-            // **CORRECCIÓN**: Habilita la acción de buscar (seek).
-            navigator.mediaSession.setActionHandler('seekto', (details) => {
-                audioManager.seek(details.seekTime);
-            });
-        }
-
+        function updateMediaSession(s) { if(!('mediaSession'in navigator))return;navigator.mediaSession.metadata=new MediaMetadata({title:s.title,artist:s.artist,album:s.album,artwork:[{src:s.art||''}]});navigator.mediaSession.setActionHandler('play',togglePlayPause);navigator.mediaSession.setActionHandler('pause',togglePlayPause);navigator.mediaSession.setActionHandler('nexttrack', () => playNextSong(false));navigator.mediaSession.setActionHandler('previoustrack',playPrevSong);}
         function toggleShuffle() { state.isShuffle = !state.isShuffle; updateControlButtonsUI(); saveState(); renderNowPlayingList(); }
         function cycleRepeatMode() { const modes = ['none', 'all', 'one']; state.repeatMode = modes[(modes.indexOf(state.repeatMode) + 1) % modes.length]; updateControlButtonsUI(); saveState(); renderNowPlayingList(); }
         
