@@ -345,11 +345,11 @@
         let state = {
             library: [], playlists: [], queue: [], currentContext: { type: 'library', id: null }, contextQueue: [],
             contextIndex: -1, currentSongId: null, isPlaying: false, isShuffle: false, repeatMode: 'none', volume: 1,
-            settings: { theme: 'default', crossfadeEnabled: true, crossfadeDuration: 4, eq: { bass: 0, mids: 0, treble: 0 } },
-            currentBlobUrl: null 
+            settings: { theme: 'default', crossfadeEnabled: true, crossfadeDuration: 4, eq: { bass: 0, mids: 0, treble: 0 } }
         };
         
-        let audioContext = null, analyser = null, masterGain = null, dataArray = null, sourceNode1 = null, sourceNode2 = null, bassFilter = null, midsFilter = null, trebleFilter = null;
+        // **LÓGICA RESTAURADA DE LA VERSIÓN FUNCIONAL**
+        let audioContext = null, analyser = null, masterGain = null, dataArray = null, sourceNode = null, bassFilter = null, midsFilter = null, trebleFilter = null;
         let db; 
         
         let currentAudio = audio1;
@@ -358,7 +358,7 @@
         let animationFrameId;
         
         function initDB(onSuccess) {
-            const request = indexedDB.open('MusicPlayerDB', 3); 
+            const request = indexedDB.open('MusicPlayerDB', 2);
             request.onupgradeneeded = (event) => {
                 const dbInstance = event.target.result;
                 if (!dbInstance.objectStoreNames.contains('songs')) {
@@ -375,14 +375,7 @@
         function saveSongToDB(song) {
             if (!db) return;
             const transaction = db.transaction(['songs'], 'readwrite');
-            const songToSave = {
-                id: song.id,
-                title: song.title,
-                artist: song.artist,
-                album: song.album,
-                art: song.art,
-                file: song.file 
-            };
+            const { url, ...songToSave } = song; 
             transaction.objectStore('songs').put(songToSave);
         }
 
@@ -390,20 +383,18 @@
             if (!db) return;
             const request = db.transaction(['songs'], 'readonly').objectStore('songs').getAll();
             request.onsuccess = () => {
-                onLoad(request.result || []);
-            };
-            request.onerror = (event) => {
-                console.error("Error cargando canciones de la BD:", event.target.error);
-                onLoad([]);
+                const songs = request.result.map(song => {
+                    return {
+                        ...song,
+                        url: `data:audio/mpeg;base64,${song.data}`
+                    };
+                });
+                onLoad(songs);
             };
         }
-        
-        // **LÓGICA RESTAURADA Y MEJORADA**
+
         function setupWebAudioAPIIfNeeded() {
-            if (audioContext) {
-                if(audioContext.state === 'suspended') audioContext.resume();
-                return;
-            }
+            if (audioContext) return;
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = audioContext.createAnalyser(); 
@@ -414,22 +405,6 @@
                 
                 analyser.fftSize = 256; 
                 dataArray = new Uint8Array(analyser.frequencyBinCount);
-                
-                sourceNode1 = audioContext.createMediaElementSource(audio1);
-                sourceNode2 = audioContext.createMediaElementSource(audio2);
-
-                const connectSource = (source) => {
-                    source.connect(bassFilter)
-                          .connect(midsFilter)
-                          .connect(trebleFilter)
-                          .connect(masterGain)
-                          .connect(analyser)
-                          .connect(audioContext.destination);
-                };
-                
-                connectSource(sourceNode1);
-                connectSource(sourceNode2);
-                
                 applyEQ(); 
             } catch (e) { 
                 console.error("Web Audio API no soportada", e); 
@@ -437,40 +412,58 @@
             }
         }
         
+        // **LÓGICA RESTAURADA Y MEJORADA**: Se conecta/desconecta según sea necesario.
+        function connectVisualizer() {
+            if (!audioContext || sourceNode) return;
+            try {
+                sourceNode = audioContext.createMediaElementSource(currentAudio);
+                sourceNode.connect(bassFilter);
+                bassFilter.connect(midsFilter);
+                midsFilter.connect(trebleFilter);
+                trebleFilter.connect(masterGain);
+                masterGain.connect(analyser);
+                analyser.connect(audioContext.destination);
+            } catch (e) {
+                console.warn("No se pudo crear sourceNode:", e);
+                sourceNode = null;
+            }
+        }
+
+        function disconnectVisualizer() {
+            if (sourceNode) {
+                sourceNode.disconnect();
+                sourceNode = null;
+            }
+        }
+
         const audioManager = (() => {
             function play(song, startTime = 0) {
-                if (!song || !song.file || isCrossfading) return; 
+                if (!song || isCrossfading) return; 
                 
-                // Primero, asegurarse de que el contexto de audio esté activo.
-                setupWebAudioAPIIfNeeded();
-
                 audio1.pause();
                 audio2.pause();
 
-                if (state.currentBlobUrl) {
-                    URL.revokeObjectURL(state.currentBlobUrl);
+                if (song.data) {
+                    song.url = `data:audio/mpeg;base64,${song.data}`;
                 }
 
-                state.currentBlobUrl = URL.createObjectURL(song.file);
-                currentAudio.src = state.currentBlobUrl;
-
+                currentAudio.src = song.url; 
                 currentAudio.currentTime = startTime; 
                 currentAudio.volume = state.volume;
-                const playPromise = currentAudio.play();
-
-                if (playPromise !== undefined) {
-                    playPromise.then(() => { 
-                        state.isPlaying = true; 
-                        updateUIonPlayPause(); 
-                        drawVisualizer(); 
-                    }).catch(e => {
-                        console.error("Error al reproducir:", e);
-                        state.isPlaying = false;
-                        updateUIonPlayPause();
-                    });
-                }
+                currentAudio.play().then(() => { 
+                    state.isPlaying = true; 
+                    updateUIonPlayPause(); 
+                    connectVisualizer(); // **SE CONECTA AL REPRODUCIR**
+                    drawVisualizer(); 
+                }).catch(e => console.error("Error al reproducir:", e));
             }
-            function pause() { currentAudio.pause(); state.isPlaying = false; updateUIonPlayPause(); cancelAnimationFrame(animationFrameId); }
+            function pause() { 
+                currentAudio.pause(); 
+                state.isPlaying = false; 
+                updateUIonPlayPause(); 
+                cancelAnimationFrame(animationFrameId); 
+                disconnectVisualizer(); // **SE DESCONECTA AL PAUSAR**
+            }
             function resume() { 
                 if (audioContext && audioContext.state === 'suspended') {
                     audioContext.resume();
@@ -478,6 +471,7 @@
                 currentAudio.play().then(() => { 
                     state.isPlaying = true; 
                     updateUIonPlayPause(); 
+                    connectVisualizer(); // **SE CONECTA AL REANUDAR**
                     drawVisualizer(); 
                 }).catch(e => console.error("Error al reanudar:", e)); 
             }
@@ -536,11 +530,10 @@
         }
         
         function crossfadeToSong(nextSong) {
-            if (!nextSong || !nextSong.file || isCrossfading) return;
+            if (!nextSong || isCrossfading) return;
             isCrossfading = true;
 
-            const nextUrl = URL.createObjectURL(nextSong.file);
-            standbyAudio.src = nextUrl;
+            standbyAudio.src = nextSong.url;
             standbyAudio.volume = 0;
             standbyAudio.play().catch(e => console.error("Error al iniciar crossfade:", e));
 
@@ -549,7 +542,6 @@
             fadeVolume(standbyAudio, state.volume, duration);
 
             setTimeout(() => {
-                if(state.currentBlobUrl) URL.revokeObjectURL(state.currentBlobUrl);
                 currentAudio.pause();
                 currentAudio.src = "";
 
@@ -557,7 +549,8 @@
                 currentAudio = standbyAudio;
                 standbyAudio = temp;
                 
-                state.currentBlobUrl = nextUrl;
+                disconnectVisualizer();
+                connectVisualizer();
 
                 state.currentSongId = nextSong.id;
                 updatePlayerUI(nextSong);
@@ -628,15 +621,6 @@
                 renderAll();
                 const lastSong = getSongById(state.currentSongId);
                 updatePlayerUI(lastSong);
-                if (lastSong && lastSong.file) {
-                    const tempUrl = URL.createObjectURL(lastSong.file);
-                    currentAudio.src = tempUrl;
-                    currentAudio.addEventListener('loadedmetadata', () => {
-                        updateProgressUI(0, currentAudio.duration);
-                        URL.revokeObjectURL(tempUrl);
-                        currentAudio.src = ""; // Limpiar para no mantenerlo cargado
-                    }, { once: true });
-                }
                 updateControlButtonsUI();
                 updateMiniPlayerVisibility();
                 renderNowPlayingList();
@@ -779,13 +763,6 @@
             if (isNaN(duration)) return;
             dom.progressBar.value = (currentTime / duration) * 100;
             dom.currentTime.textContent = formatTime(currentTime); dom.duration.textContent = formatTime(duration);
-            if ('mediaSession' in navigator && navigator.mediaSession.metadata) {
-                navigator.mediaSession.setPositionState({
-                    duration: duration,
-                    playbackRate: currentAudio.playbackRate,
-                    position: currentTime
-                });
-            }
         }
 
         function updateUIonPlayPause() {
@@ -796,15 +773,11 @@
         }
 
         function togglePlayPause() {
-            setupWebAudioAPIIfNeeded();
+            if (audioContext && audioContext.state === 'suspended') audioContext.resume();
             
-            if (state.isPlaying) {
-                audioManager.pause(); 
-            } else if (state.currentSongId) {
-                audioManager.resume();
-            } else if (state.library.length > 0) {
-                playSongFromContext(state.library[0].id, 'library');
-            }
+            if (state.isPlaying) audioManager.pause(); 
+            else if (state.currentSongId) audioManager.resume();
+            else if (state.library.length > 0) playSongFromContext(state.library[0].id, 'library');
         }
 
         function setupEventListeners() {
@@ -827,8 +800,8 @@
             dom.settingsBtn.addEventListener('click', openSettingsModal); 
             
             dom.eqBtn.addEventListener('click', () => {
-                setupWebAudioAPIIfNeeded();
                 openEQModal();
+                connectVisualizer();
             });
 
             dom.contextMenuBackdrop.addEventListener('click', hideContextMenu);
@@ -896,36 +869,38 @@
         }
         
         async function processFile(file) {
-            return new Promise((resolve) => {
-                window.jsmediatags.read(file, {
-                    onSuccess: (tag) => {
-                        const { title, artist, album, picture } = tag.tags;
-                        let art = null;
-                        if (picture) {
-                            const blob = new Blob([new Uint8Array(picture.data)], { type: picture.format });
-                            art = URL.createObjectURL(blob);
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const data = arrayBufferToBase64(e.target.result); 
+                    const songUrl = `data:audio/mpeg;base64,${data}`;
+                    window.jsmediatags.read(file, {
+                        onSuccess: (tag) => {
+                            const { title, artist, album, picture } = tag.tags;
+                            resolve({ 
+                                id: self.crypto.randomUUID(), 
+                                title: title || file.name.replace(/\.[^/.]+$/, ""), 
+                                artist: artist || 'Desconocido', 
+                                album: album || 'Desconocido', 
+                                art: picture ? `data:${picture.format};base64,${window.btoa(picture.data.reduce((acc, byte) => acc + String.fromCharCode(byte), ''))}` : null, 
+                                data, 
+                                url: songUrl 
+                            });
+                        }, onError: (error) => {
+                             resolve({ 
+                                 id: self.crypto.randomUUID(), 
+                                 title: file.name.replace(/\.[^/.]+$/, ""), 
+                                 artist: 'Desconocido', 
+                                 album: 'Desconocido', 
+                                 art: null, 
+                                 data, 
+                                 url: songUrl 
+                            });
                         }
-                        resolve({ 
-                            id: self.crypto.randomUUID(), 
-                            title: title || file.name.replace(/\.[^/.]+$/, ""), 
-                            artist: artist || 'Desconocido', 
-                            album: album || 'Desconocido', 
-                            art: art,
-                            file: file 
-                        });
-                    }, 
-                    onError: (error) => {
-                        console.warn('jsmediatags error:', error);
-                         resolve({ 
-                             id: self.crypto.randomUUID(), 
-                             title: file.name.replace(/\.[^/.]+$/, ""), 
-                             artist: 'Desconocido', 
-                             album: 'Desconocido', 
-                             art: null, 
-                             file: file
-                        });
-                    }
-                });
+                    });
+                }; 
+                reader.onerror = (error) => reject(error);
+                reader.readAsArrayBuffer(file);
             });
         }
         
@@ -939,8 +914,6 @@
         }
         
         function playSongFromContext(songId, contextType, contextId = null) {
-            setupWebAudioAPIIfNeeded();
-
             if (isCrossfading) return;
             if (state.currentContext.type !== contextType || state.currentContext.id !== contextId) { setContext(contextType, contextId); }
             state.contextIndex = state.contextQueue.findIndex(id => id === songId); 
