@@ -414,7 +414,7 @@
         function enableVisualizerAndEQ() {
             setupWebAudioAPIIfNeeded();
             if (!audioContext) return;
-            // **CORRECCIÓN**: Si el sourceNode ya existe, desconéctalo antes de crear uno nuevo.
+            
             if (sourceNode) {
                 sourceNode.disconnect();
             }
@@ -451,7 +451,6 @@
                     state.isPlaying = true; 
                     updateUIonPlayPause(); 
                     
-                    // **CORRECCIÓN**: Llama a `enableVisualizerAndEQ` después de que la reproducción comience con éxito.
                     enableVisualizerAndEQ();
                     drawVisualizer(); 
 
@@ -463,7 +462,6 @@
             }
             function pause() { currentAudio.pause(); state.isPlaying = false; updateUIonPlayPause(); cancelAnimationFrame(animationFrameId); }
             function resume() { 
-                // **CORRECCIÓN**: Asegúrate de que el AudioContext esté activo antes de reanudar.
                 if (audioContext && audioContext.state === 'suspended') {
                     audioContext.resume();
                 }
@@ -547,7 +545,6 @@
                 currentAudio = standbyAudio;
                 standbyAudio = temp;
                 
-                // **CORRECCIÓN**: Asegúrate de reconectar el visualizador al nuevo elemento de audio.
                 enableVisualizerAndEQ();
 
                 state.currentSongId = nextSong.id;
@@ -620,10 +617,8 @@
                 const lastSong = getSongById(state.currentSongId);
                 updatePlayerUI(lastSong);
 
-                // **CORRECCIÓN**: Carga el audio de la última canción al iniciar.
                 if (lastSong) {
                     currentAudio.src = lastSong.url;
-                    // Escucha a que los metadatos se carguen para mostrar la duración correcta.
                     currentAudio.addEventListener('loadedmetadata', () => {
                         updateProgressUI(0, currentAudio.duration);
                     }, { once: true });
@@ -771,6 +766,15 @@
             if (isNaN(duration)) return;
             dom.progressBar.value = (currentTime / duration) * 100;
             dom.currentTime.textContent = formatTime(currentTime); dom.duration.textContent = formatTime(duration);
+            
+            // **CORRECCIÓN**: Actualiza el estado de la posición para la Media Session.
+            if ('mediaSession' in navigator && navigator.mediaSession.metadata) {
+                navigator.mediaSession.setPositionState({
+                    duration: duration,
+                    playbackRate: currentAudio.playbackRate,
+                    position: currentTime
+                });
+            }
         }
 
         function updateUIonPlayPause() {
@@ -815,7 +819,7 @@
             
             dom.eqBtn.addEventListener('click', () => {
                 openEQModal();
-                enableVisualizerAndEQ(); // Activa el audio context al abrir el modal de EQ
+                enableVisualizerAndEQ();
             });
 
             dom.contextMenuBackdrop.addEventListener('click', hideContextMenu);
@@ -1093,7 +1097,7 @@
             const barWidth = (dom.visualizerCanvas.width / dataArray.length) * 2.5;
             let x = 0;
             for (let i = 0; i < dataArray.length; i++) {
-                const barHeight = dataArray[i] / 1.5; // Ajuste para que las barras no sean tan altas
+                const barHeight = dataArray[i] / 1.5;
                 
                 dom.canvasCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent-primary');
                 dom.canvasCtx.fillRect(x, dom.visualizerCanvas.height - barHeight, barWidth, barHeight);
@@ -1104,7 +1108,27 @@
         function formatTime(s) { const m=Math.floor(s/60),c=Math.floor(s%60); return isNaN(m)?'0:00':`${m}:${c<10?'0':''}${c}`; }
         function arrayBufferToBase64(b) { let s='';new Uint8Array(b).forEach(v=>s+=String.fromCharCode(v));return window.btoa(s); }
         function base64toBlob(base64, contentType = 'audio/mpeg') { try { const byteCharacters=atob(base64); const byteArrays=[]; for(let offset=0; offset < byteCharacters.length; offset+=512){ const slice = byteCharacters.slice(offset, offset + 512); const byteNumbers = new Array(slice.length); for (let i=0; i < slice.length; i++){ byteNumbers[i] = slice.charCodeAt(i); } const byteArray = new Uint8Array(byteNumbers); byteArrays.push(byteArray); } return new Blob(byteArrays, {type: contentType}); } catch(e) { console.error("Error al convertir base64 a Blob", e); return new Blob([]); } }
-        function updateMediaSession(s) { if(!('mediaSession'in navigator))return;navigator.mediaSession.metadata=new MediaMetadata({title:s.title,artist:s.artist,album:s.album,artwork:[{src:s.art||''}]});navigator.mediaSession.setActionHandler('play',togglePlayPause);navigator.mediaSession.setActionHandler('pause',togglePlayPause);navigator.mediaSession.setActionHandler('nexttrack', () => playNextSong(false));navigator.mediaSession.setActionHandler('previoustrack',playPrevSong);}
+        
+        function updateMediaSession(song) {
+            if (!('mediaSession' in navigator)) return;
+            
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: song.title,
+                artist: song.artist,
+                album: song.album,
+                artwork: [{ src: song.art || '' }]
+            });
+
+            navigator.mediaSession.setActionHandler('play', togglePlayPause);
+            navigator.mediaSession.setActionHandler('pause', togglePlayPause);
+            navigator.mediaSession.setActionHandler('nexttrack', () => playNextSong(false));
+            navigator.mediaSession.setActionHandler('previoustrack', playPrevSong);
+            // **CORRECCIÓN**: Habilita la acción de buscar (seek).
+            navigator.mediaSession.setActionHandler('seekto', (details) => {
+                audioManager.seek(details.seekTime);
+            });
+        }
+
         function toggleShuffle() { state.isShuffle = !state.isShuffle; updateControlButtonsUI(); saveState(); renderNowPlayingList(); }
         function cycleRepeatMode() { const modes = ['none', 'all', 'one']; state.repeatMode = modes[(modes.indexOf(state.repeatMode) + 1) % modes.length]; updateControlButtonsUI(); saveState(); renderNowPlayingList(); }
         
