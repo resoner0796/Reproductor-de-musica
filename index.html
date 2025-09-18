@@ -394,6 +394,7 @@
 
         function setupWebAudioAPIIfNeeded() {
             if (audioContext) {
+                // Si el contexto existe pero está "dormido", lo despierta.
                 if(audioContext.state === 'suspended') audioContext.resume();
                 return;
             }
@@ -432,6 +433,7 @@
                 masterGain.connect(analyser);
                 analyser.connect(audioContext.destination);
             } catch (e) {
+                // Este error puede ocurrir si el elemento de audio no está listo, es seguro ignorarlo temporalmente.
                 console.warn("No se pudo crear sourceNode para visualizador/EQ:", e);
                 sourceNode = null;
             }
@@ -447,20 +449,24 @@
                 currentAudio.src = song.url; 
                 currentAudio.currentTime = startTime; 
                 currentAudio.volume = state.volume;
-                currentAudio.play().then(() => { 
-                    state.isPlaying = true; 
-                    updateUIonPlayPause(); 
-                    
-                    if(audioContext){ 
-                        enableVisualizerAndEQ();
-                    }
+                const playPromise = currentAudio.play();
 
-                    drawVisualizer(); 
-                }).catch(e => {
-                    console.error("Error al reproducir:", e);
-                    state.isPlaying = false;
-                    updateUIonPlayPause();
-                });
+                if (playPromise !== undefined) {
+                    playPromise.then(() => { 
+                        state.isPlaying = true; 
+                        updateUIonPlayPause(); 
+                        
+                        // Asegura que el sistema de audio esté activo y reconectado a la nueva canción.
+                        if(audioContext){ 
+                            enableVisualizerAndEQ();
+                        }
+                        drawVisualizer(); 
+                    }).catch(e => {
+                        console.error("Error al reproducir:", e);
+                        state.isPlaying = false;
+                        updateUIonPlayPause();
+                    });
+                }
             }
             function pause() { currentAudio.pause(); state.isPlaying = false; updateUIonPlayPause(); cancelAnimationFrame(animationFrameId); }
             function resume() { 
@@ -814,6 +820,7 @@
             dom.settingsBtn.addEventListener('click', openSettingsModal); 
             
             dom.eqBtn.addEventListener('click', () => {
+                setupWebAudioAPIIfNeeded(); // Asegurarse de que el contexto esté listo
                 enableVisualizerAndEQ();
                 openEQModal();
             });
