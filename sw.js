@@ -1,12 +1,12 @@
-const CACHE_NAME = 'music-player-cache-v2'; // Incrementamos la versión para forzar la actualización
-// Lista de archivos locales esenciales para el "App Shell".
+const CACHE_NAME = 'music-player-cache-v2';
+// Lista de archivos locales esenciales.
 const urlsToCache = [
   '/',
   'index.html',
   'manifest.json',
-  // Asegúrate que las rutas a tus iconos sean correctas
-  'icon-192x192.PNG',
-  'icon-512x512.PNG'
+  // Rutas a los iconos corregidas a minúsculas
+  'icon-192x192.png',
+  'icon-512x512.png'
 ];
 
 // Evento 'install': se dispara cuando el Service Worker se instala.
@@ -22,7 +22,6 @@ self.addEventListener('install', event => {
 });
 
 // Evento 'activate': se dispara cuando el Service Worker se activa.
-// Se utiliza para limpiar cachés antiguas.
 self.addEventListener('activate', event => {
   const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
@@ -42,7 +41,6 @@ self.addEventListener('activate', event => {
 
 // Evento 'fetch': Estrategia "Network falling back to cache".
 self.addEventListener('fetch', event => {
-  // Ignoramos peticiones que no son GET
   if (event.request.method !== 'GET') {
     return;
   }
@@ -50,14 +48,17 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     fetch(event.request)
       .then(networkResponse => {
-        // Si la petición a la red tiene éxito, la cacheamos y la devolvemos
-        return caches.open(CACHE_NAME).then(cache => {
-          cache.put(event.request, networkResponse.clone());
-          return networkResponse;
-        });
+        // Asegúrate de que la respuesta sea válida antes de cachearla
+        if (networkResponse && networkResponse.ok) {
+            return caches.open(CACHE_NAME).then(cache => {
+              cache.put(event.request, networkResponse.clone());
+              return networkResponse;
+            });
+        }
+        return networkResponse;
       })
       .catch(() => {
-        // Si la petición a la red falla (estamos offline), intentamos servir desde la caché
+        // Si la red falla, intenta servir desde la caché
         return caches.match(event.request);
       })
   );
