@@ -136,33 +136,6 @@
         #now-playing-list { overflow-y: auto; }
         #now-playing-list .list-item { padding-left: 0.75rem; padding-right: 0.75rem; }
         #now-playing-backdrop { position: fixed; inset: 0; z-index: 44; }
-
-        .knob-container { display: flex; flex-direction: column; align-items: center; }
-        .knob {
-            width: 70px; height: 70px; border-radius: 50%;
-            background: radial-gradient(circle at 50% 50%, var(--bg-secondary), var(--bg-primary));
-            border: 4px solid var(--bg-tertiary);
-            position: relative; cursor: grab;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2), inset 0 2px 4px rgba(0,0,0,0.4);
-        }
-        .knob:active { cursor: grabbing; }
-        .knob::before {
-            content: ''; position: absolute;
-            top: 8px; left: 50%;
-            transform: translateX(-50%);
-            width: 4px; height: 16px;
-            background-color: var(--accent-primary);
-            border-radius: 2px;
-        }
-        .knob-label { margin-top: 0.5rem; text-transform: capitalize; font-weight: 500; }
-        .eq-preset-btn {
-            background-color: var(--bg-tertiary);
-            color: var(--text-primary);
-            padding: 0.5rem 1rem; border-radius: 9999px;
-            font-size: 0.875rem;
-            transition: background-color 0.2s;
-        }
-        .eq-preset-btn:hover { background-color: var(--bg-interactive); }
         
         #library-view details summary {
             padding: 0.75rem 0.5rem;
@@ -185,7 +158,6 @@
         #library-view details .sub-list-item:hover {
             background-color: var(--bg-tertiary);
         }
-
     </style>
 </head>
 <body>
@@ -196,10 +168,7 @@
             
             <div id="player-view" class="view active justify-between h-full space-y-4">
                  <div class="flex-shrink-0 flex justify-between items-center">
-                    <button id="eq-btn" class="p-2 hover-bg rounded-full z-10 inline-block">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M2 14h4M10 8h4M18 16h4"/></svg>
-                    </button>
-                    <h3 class="text-lg font-semibold text-primary">Reproduciendo</h3>
+                    <div class="w-10 h-10"></div> <h3 class="text-lg font-semibold text-primary">Reproduciendo</h3>
                     <div class="flex items-center space-x-2 z-10">
                         <button id="settings-btn" class="p-2 hover-bg rounded-full"></button>
                     </div>
@@ -323,7 +292,7 @@
             miniPlayerBar: document.getElementById('mini-player-bar'), miniAlbumArt: document.getElementById('mini-album-art'),
             miniSongTitle: document.getElementById('mini-song-title'), miniSongArtist: document.getElementById('mini-song-artist'),
             miniPlayPauseBtn: document.getElementById('mini-play-pause-btn'),
-            settingsBtn: document.getElementById('settings-btn'), eqBtn: document.getElementById('eq-btn'),
+            settingsBtn: document.getElementById('settings-btn'),
             addFilesBtn: document.getElementById('add-files-btn'),
             libraryContent: document.getElementById('library-content'),
             playlistsView: document.getElementById('playlists-view'),
@@ -343,14 +312,10 @@
         let state = {
             library: [], playlists: [], queue: [], currentContext: { type: 'library', id: null }, contextQueue: [],
             contextIndex: -1, currentSongId: null, isPlaying: false, isShuffle: false, repeatMode: 'none', volume: 1,
-            settings: { theme: 'default', crossfadeEnabled: true, crossfadeDuration: 4, eq: { bass: 0, mids: 0, treble: 0 } }
+            settings: { theme: 'default', crossfadeEnabled: true, crossfadeDuration: 4 }
         };
         
-        let audioContext = null, analyser = null, masterGain = null;
-        let sourceNode1 = null, sourceNode2 = null;
-        let bassFilter = null, midsFilter = null, trebleFilter = null;
         let db; 
-        
         let currentAudio = audio1;
         let standbyAudio = audio2;
         let isCrossfading = false;
@@ -385,14 +350,13 @@
                     const blob = base64ToBlob(song.data, 'audio/mpeg');
                     return {
                         ...song,
-                        url: URL.createObjectURL(blob) // Crear un Object URL para la reproducción inmediata
+                        url: URL.createObjectURL(blob)
                     };
                 });
                 onLoad(songs);
             };
         }
         
-        // **Función auxiliar para convertir Base64 a Blob**
         function base64ToBlob(base64, contentType = '', sliceSize = 512) {
             const byteCharacters = atob(base64);
             const byteArrays = [];
@@ -408,51 +372,9 @@
             return new Blob(byteArrays, { type: contentType });
         }
         
-        function setupWebAudioAPIIfNeeded() {
-            if (audioContext) return;
-            try {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                
-                // Resumir el contexto de audio en la primera interacción del usuario
-                const resumeAudio = () => {
-                    if (audioContext.state === 'suspended') {
-                        audioContext.resume();
-                    }
-                    document.body.removeEventListener('click', resumeAudio);
-                    document.body.removeEventListener('touchstart', resumeAudio);
-                };
-                document.body.addEventListener('click', resumeAudio);
-                document.body.addEventListener('touchstart', resumeAudio);
-
-                masterGain = audioContext.createGain();
-
-                bassFilter = audioContext.createBiquadFilter(); bassFilter.type = "lowshelf"; bassFilter.frequency.value = 250;
-                midsFilter = audioContext.createBiquadFilter(); midsFilter.type = "peaking"; midsFilter.frequency.value = 1000; midsFilter.Q.value = 1;
-                trebleFilter = audioContext.createBiquadFilter(); trebleFilter.type = "highshelf"; trebleFilter.frequency.value = 4000;
-                
-                sourceNode1 = audioContext.createMediaElementSource(audio1);
-                sourceNode2 = audioContext.createMediaElementSource(audio2);
-
-                sourceNode1.connect(bassFilter);
-                sourceNode2.connect(bassFilter);
-
-                bassFilter.connect(midsFilter);
-                midsFilter.connect(trebleFilter);
-                trebleFilter.connect(masterGain);
-                masterGain.connect(audioContext.destination);
-
-                applyEQ(); 
-            } catch (e) { 
-                console.error("Web Audio API no soportada", e); 
-                audioContext = null;
-            }
-        }
-        
         const audioManager = (() => {
             function play(song, startTime = 0) {
-                if (!song || isCrossfading) return; 
-                
-                setupWebAudioAPIIfNeeded(); 
+                if (!song) return; 
 
                 audio1.pause();
                 audio2.pause();
@@ -471,9 +393,6 @@
                 updateUIonPlayPause(); 
             }
             function resume() { 
-                if (audioContext && audioContext.state === 'suspended') {
-                    audioContext.resume();
-                }
                 currentAudio.play().then(() => { 
                     state.isPlaying = true; 
                     updateUIonPlayPause(); 
@@ -497,7 +416,10 @@
             return { 
                 play, pause, resume, 
                 seek: (time) => { if (!isCrossfading) currentAudio.currentTime = time; },
-                setVolume: (vol) => { if (!isCrossfading) currentAudio.volume = vol; } 
+                setVolume: (vol) => { 
+                    currentAudio.volume = vol; 
+                    standbyAudio.volume = vol;
+                } 
             };
         })();
         
@@ -517,19 +439,19 @@
             }
         }
         
-        function fadeVolume(audio, to, duration) {
+        function fadeVolume(audio, to, duration, onComplete) {
             const from = audio.volume;
             const steps = 50;
             const stepDuration = (duration * 1000) / steps;
             const delta = (to - from) / steps;
             let currentStep = 0;
             const timer = setInterval(() => {
-                if (currentStep++ >= steps) {
+                audio.volume = Math.max(0, Math.min(1, audio.volume + delta));
+                if (++currentStep >= steps) {
                     clearInterval(timer);
                     audio.volume = to;
-                    return;
+                    if (onComplete) onComplete();
                 }
-                audio.volume += delta;
             }, stepDuration);
         }
         
@@ -542,18 +464,15 @@
             standbyAudio.play().catch(e => console.error("Error al iniciar crossfade:", e));
 
             const duration = state.settings.crossfadeDuration;
-            fadeVolume(currentAudio, 0, duration);
-            fadeVolume(standbyAudio, state.volume, duration);
-
-            setTimeout(() => {
+            fadeVolume(currentAudio, 0, duration, () => {
                 currentAudio.pause();
-                
-                // Limpiar la URL anterior para liberar memoria
                 if (currentAudio.src.startsWith('blob:')) {
                     URL.revokeObjectURL(currentAudio.src);
                 }
-                currentAudio.src = "";
+            });
+            fadeVolume(standbyAudio, state.volume, duration);
 
+            setTimeout(() => {
                 let temp = currentAudio;
                 currentAudio = standbyAudio;
                 standbyAudio = temp;
@@ -779,8 +698,6 @@
         }
 
         function togglePlayPause() {
-            if (audioContext && audioContext.state === 'suspended') audioContext.resume();
-            
             if (state.isPlaying) audioManager.pause(); 
             else if (state.currentSongId) audioManager.resume();
             else if (state.library.length > 0) playSongFromContext(state.library[0].id, 'library');
@@ -805,11 +722,6 @@
             dom.fileInput.addEventListener('change', handleFileSelect);
             dom.settingsBtn.addEventListener('click', openSettingsModal); 
             
-            dom.eqBtn.addEventListener('click', () => {
-                setupWebAudioAPIIfNeeded(); 
-                openEQModal();
-            });
-
             dom.contextMenuBackdrop.addEventListener('click', hideContextMenu);
             dom.convertBtn.addEventListener('click', () => {
                 const link = dom.youtubeLinkInput.value.trim();
@@ -917,7 +829,6 @@
             
             const song = getSongById(songId);
             if(song) {
-                // Revocar URL anterior para liberar memoria, si existe y es un blob
                 const currentSong = getSongById(state.currentSongId);
                 if (currentSong && currentSong.url && currentSong.url.startsWith('blob:')) {
                     URL.revokeObjectURL(currentSong.url);
@@ -1141,9 +1052,6 @@
             };
             dom.repeatBtn.querySelector('svg').innerHTML = repeatIconSVG[state.repeatMode] || repeatIconSVG['none'];
         }
-
-        function openEQModal() { const presets = { 'Pop': { bass: 4, mids: -2, treble: 5 }, 'Rock': { bass: 5, mids: 1, treble: 4 }, 'Jazz': { bass: 4, mids: 3, treble: 3 }, 'Clásica': { bass: -2, mids: 2, treble: 1 } }; const modalContent = `<div class="flex justify-between items-center mb-4"><h2 class="text-2xl font-bold">Ecualizador</h2><button id="close-eq-btn" class="p-2 rounded-full hover-bg text-2xl leading-none">&times;</button></div><div class="flex justify-around items-center p-4">${['bass','mids','treble'].map(type=>`<div class="knob-container"><div class="knob" data-type="${type}" style="transform: rotate(${((state.settings.eq[type]+20)/40*270)-135}deg)"></div><span class="knob-label">${type}</span></div>`).join('')}</div><div class="flex flex-wrap justify-center gap-2 mt-2"><button class="eq-preset-btn" data-preset="flat">Plano</button>${Object.keys(presets).map(p=>`<button class="eq-preset-btn" data-preset="${p}">${p}</button>`).join('')}</div>`; const modal = showModal(modalContent); const applyPreset=(name)=>{state.settings.eq=name==='flat'?{bass:0,mids:0,treble:0}:{...presets[name]};applyEQ();saveState();modal.querySelectorAll('.knob').forEach(k=>{const t=k.dataset.type;k.style.transform=`rotate(${((state.settings.eq[t]+20)/40*270)-135}deg)`})}; modal.querySelector('#close-eq-btn').addEventListener('click',closeModal);modal.querySelectorAll('.eq-preset-btn').forEach(b=>b.addEventListener('click',()=>applyPreset(b.dataset.preset))); modal.querySelectorAll('.knob').forEach(knob=>{const type=knob.dataset.type;let isDragging=false;const move=(e)=>{if(!isDragging)return;const r=knob.getBoundingClientRect();const cX=r.left+r.width/2;const cY=r.top+r.height/2;const clientX=e.touches?e.touches[0].clientX:e.clientX;const clientY=e.touches?e.touches[0].clientY:e.clientY;let a=Math.atan2(clientY-cY,clientX-cX)*180/Math.PI-90;let rot=Math.max(-135,Math.min(135,a));state.settings.eq[type]=Math.round((rot+135)/270*40-20);knob.style.transform=`rotate(${rot}deg)`;applyEQ()};const up=()=>{isDragging=false;saveState();document.removeEventListener('mousemove',move);document.removeEventListener('mouseup',up);document.removeEventListener('touchmove',move);document.removeEventListener('touchend',up)};const down=(e)=>{e.preventDefault();isDragging=true;document.addEventListener('mousemove',move);document.addEventListener('mouseup',up);document.addEventListener('touchmove',move);document.addEventListener('touchend',up)};knob.addEventListener('mousedown',down);knob.addEventListener('touchstart',down);knob.addEventListener('dblclick',()=>{state.settings.eq[type]=0;knob.style.transform='rotate(-135deg)';applyEQ();saveState()})}); }
-        function applyEQ() { if (!audioContext) return; bassFilter.gain.value = state.settings.eq.bass; midsFilter.gain.value = state.settings.eq.mids; trebleFilter.gain.value = state.settings.eq.treble; }
         
         function setupSVGs(){
             const icons = {
