@@ -5,8 +5,8 @@ const urlsToCache = [
   'index.html',
   'manifest.json',
   // Rutas a los iconos corregidas a minúsculas
-  'icon-192x192.png',
-  'icon-512x512.png'
+  'icon-192x192.PNG',
+  'icon-512x512.PNG'
 ];
 
 // Evento 'install': se dispara cuando el Service Worker se instala.
