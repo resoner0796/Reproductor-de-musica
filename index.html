@@ -25,7 +25,7 @@
         }
         /* TEMA: Ámbar */
         .theme-sunset {
-             --bg-primary: #2d1d2b; --bg-secondary: #452a42; --bg-tertiary: #6d435a;
+            --bg-primary: #2d1d2b; --bg-secondary: #452a42; --bg-tertiary: #6d435a;
             --bg-interactive: #9d6b7b; --text-primary: #f5e0e6; --text-secondary: #e6c0c8;
             --accent-primary: #ff7a5c; --accent-hover: #ff9e86;
             --bg-glass: rgba(69, 42, 66, 0.65); --border-glass: rgba(245, 224, 230, 0.15);
@@ -183,7 +183,7 @@
             cursor: pointer;
         }
         #library-view details .sub-list-item:hover {
-             background-color: var(--bg-tertiary);
+            background-color: var(--bg-tertiary);
         }
 
     </style>
@@ -272,14 +272,14 @@
 
         <div id="bottom-bar-wrapper">
              <div id="mini-player-bar" class="px-2 glass-effect cursor-pointer">
-                   <div class="mini-player-inner p-2 flex items-center space-x-3">
-                       <img id="mini-album-art" src="https://placehold.co/96x96/1a1b26/1a1b26" alt="Mini Carátula" class="w-12 h-12 rounded-md flex-shrink-0 object-cover">
-                       <div class="flex-grow truncate">
-                           <p id="mini-song-title" class="font-semibold text-primary truncate">Sin música</p>
-                           <p id="mini-song-artist" class="text-sm truncate">Selecciona una canción</p>
-                       </div>
-                       <button id="mini-play-pause-btn" class="play-pause-btn w-12 h-12 flex items-center justify-center rounded-full shadow-lg flex-shrink-0"></button>
-                   </div>
+                    <div class="mini-player-inner p-2 flex items-center space-x-3">
+                        <img id="mini-album-art" src="https://placehold.co/96x96/1a1b26/1a1b26" alt="Mini Carátula" class="w-12 h-12 rounded-md flex-shrink-0 object-cover">
+                        <div class="flex-grow truncate">
+                            <p id="mini-song-title" class="font-semibold text-primary truncate">Sin música</p>
+                            <p id="mini-song-artist" class="text-sm truncate">Selecciona una canción</p>
+                        </div>
+                        <button id="mini-play-pause-btn" class="play-pause-btn w-12 h-12 flex items-center justify-center rounded-full shadow-lg flex-shrink-0"></button>
+                    </div>
             </div>
             <nav class="tab-bar flex justify-around p-2">
                 <button class="tab active flex flex-col items-center text-xs w-full py-1 border-b-2" data-view="player-view"></button>
@@ -348,8 +348,11 @@
             settings: { theme: 'default', crossfadeEnabled: true, crossfadeDuration: 4, eq: { bass: 0, mids: 0, treble: 0 } }
         };
         
-        // **LÓGICA RESTAURADA DE LA VERSIÓN FUNCIONAL**
-        let audioContext = null, analyser = null, masterGain = null, dataArray = null, sourceNode = null, bassFilter = null, midsFilter = null, trebleFilter = null;
+        // **NUEVA LÓGICA DE AUDIO (MÁS ESTABLE)**
+        // Se crea el contexto y los nodos de audio una sola vez para evitar errores de reconexión.
+        let audioContext = null, analyser = null, masterGain = null, dataArray = null;
+        let sourceNode1 = null, sourceNode2 = null; // Nodos fuente para cada elemento <audio>
+        let bassFilter = null, midsFilter = null, trebleFilter = null;
         let db; 
         
         let currentAudio = audio1;
@@ -392,17 +395,37 @@
                 onLoad(songs);
             };
         }
-
+        
+        // **FUNCIÓN DE AUDIO MEJORADA**
+        // Se inicializa la Web Audio API y se conectan AMBOS elementos de audio de forma permanente.
+        // Esto soluciona el problema del ecualizador en segundo plano / iOS.
         function setupWebAudioAPIIfNeeded() {
             if (audioContext) return;
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = audioContext.createAnalyser(); 
                 masterGain = audioContext.createGain();
+
+                // Crear filtros de ecualización
                 bassFilter = audioContext.createBiquadFilter(); bassFilter.type = "lowshelf"; bassFilter.frequency.value = 250;
                 midsFilter = audioContext.createBiquadFilter(); midsFilter.type = "peaking"; midsFilter.frequency.value = 1000; midsFilter.Q.value = 1;
                 trebleFilter = audioContext.createBiquadFilter(); trebleFilter.type = "highshelf"; trebleFilter.frequency.value = 4000;
                 
+                // Crear nodos fuente para cada elemento de audio
+                sourceNode1 = audioContext.createMediaElementSource(audio1);
+                sourceNode2 = audioContext.createMediaElementSource(audio2);
+
+                // Conectar ambos nodos fuente a la cadena de filtros
+                sourceNode1.connect(bassFilter);
+                sourceNode2.connect(bassFilter);
+
+                // Conectar la cadena de procesamiento
+                bassFilter.connect(midsFilter);
+                midsFilter.connect(trebleFilter);
+                trebleFilter.connect(masterGain);
+                masterGain.connect(analyser);
+                analyser.connect(audioContext.destination);
+
                 analyser.fftSize = 256; 
                 dataArray = new Uint8Array(analyser.frequencyBinCount);
                 applyEQ(); 
@@ -412,38 +435,16 @@
             }
         }
         
-        // **LÓGICA RESTAURADA Y MEJORADA**: Se conecta/desconecta según sea necesario.
-        function connectVisualizer() {
-            if (!audioContext || sourceNode) return;
-            try {
-                sourceNode = audioContext.createMediaElementSource(currentAudio);
-                sourceNode.connect(bassFilter);
-                bassFilter.connect(midsFilter);
-                midsFilter.connect(trebleFilter);
-                trebleFilter.connect(masterGain);
-                masterGain.connect(analyser);
-                analyser.connect(audioContext.destination);
-            } catch (e) {
-                console.warn("No se pudo crear sourceNode:", e);
-                sourceNode = null;
-            }
-        }
-
-        function disconnectVisualizer() {
-            if (sourceNode) {
-                sourceNode.disconnect();
-                sourceNode = null;
-            }
-        }
-
         const audioManager = (() => {
             function play(song, startTime = 0) {
                 if (!song || isCrossfading) return; 
                 
+                setupWebAudioAPIIfNeeded(); // Asegurarse que el contexto de audio esté listo
+
                 audio1.pause();
                 audio2.pause();
 
-                if (song.data) {
+                if (song.data && !song.url.startsWith('data:')) {
                     song.url = `data:audio/mpeg;base64,${song.data}`;
                 }
 
@@ -453,7 +454,6 @@
                 currentAudio.play().then(() => { 
                     state.isPlaying = true; 
                     updateUIonPlayPause(); 
-                    connectVisualizer(); // **SE CONECTA AL REPRODUCIR**
                     drawVisualizer(); 
                 }).catch(e => console.error("Error al reproducir:", e));
             }
@@ -462,7 +462,6 @@
                 state.isPlaying = false; 
                 updateUIonPlayPause(); 
                 cancelAnimationFrame(animationFrameId); 
-                disconnectVisualizer(); // **SE DESCONECTA AL PAUSAR**
             }
             function resume() { 
                 if (audioContext && audioContext.state === 'suspended') {
@@ -471,7 +470,6 @@
                 currentAudio.play().then(() => { 
                     state.isPlaying = true; 
                     updateUIonPlayPause(); 
-                    connectVisualizer(); // **SE CONECTA AL REANUDAR**
                     drawVisualizer(); 
                 }).catch(e => console.error("Error al reanudar:", e)); 
             }
@@ -549,9 +547,6 @@
                 currentAudio = standbyAudio;
                 standbyAudio = temp;
                 
-                disconnectVisualizer();
-                connectVisualizer();
-
                 state.currentSongId = nextSong.id;
                 updatePlayerUI(nextSong);
                 updateMediaSession(nextSong);
@@ -800,8 +795,8 @@
             dom.settingsBtn.addEventListener('click', openSettingsModal); 
             
             dom.eqBtn.addEventListener('click', () => {
+                setupWebAudioAPIIfNeeded(); // Se asegura que el contexto esté activo antes de abrir el modal
                 openEQModal();
-                connectVisualizer();
             });
 
             dom.contextMenuBackdrop.addEventListener('click', hideContextMenu);
@@ -888,13 +883,13 @@
                             });
                         }, onError: (error) => {
                              resolve({ 
-                                 id: self.crypto.randomUUID(), 
-                                 title: file.name.replace(/\.[^/.]+$/, ""), 
-                                 artist: 'Desconocido', 
-                                 album: 'Desconocido', 
-                                 art: null, 
-                                 data, 
-                                 url: songUrl 
+                                id: self.crypto.randomUUID(), 
+                                title: file.name.replace(/\.[^/.]+$/, ""), 
+                                artist: 'Desconocido', 
+                                album: 'Desconocido', 
+                                art: null, 
+                                data, 
+                                url: songUrl 
                             });
                         }
                     });
@@ -1038,18 +1033,76 @@
         
         function openAddToPlaylistModal(songId) { let playlistItems = state.playlists.length > 0 ? state.playlists.map(p => `<li class="list-item p-3 rounded-lg cursor-pointer" data-id="${p.id}">${p.name}</li>`).join('') : `<li class="text-center text-secondary p-4">No hay playlists.</li>`; const modalContent = `<h2 class="text-xl font-bold text-primary">Añadir a...</h2><ul class="max-h-60 overflow-y-auto space-y-1">${playlistItems}</ul><button id="close-modal-btn" class="mt-4 w-full bg-tertiary text-primary py-2 rounded-lg hover-bg">Cerrar</button>`; const modal = showModal(modalContent); modal.querySelectorAll('.list-item').forEach(item => { item.addEventListener('click', () => { addSongToPlaylist(songId, item.dataset.id); closeModal(); }); }); modal.querySelector('#close-modal-btn').addEventListener('click', closeModal); }
         
+        // **FUNCIÓN MODIFICADA: AÑADIDA EDICIÓN DE PORTADA**
         function openEditSongModal(songId) {
             const song = getSongById(songId);
             if (!song) return;
-            const modalContent = `<h2 class="text-xl font-bold text-primary">Editar Canción</h2><div class="space-y-3"><div><label for="edit-title" class="text-sm block mb-1">Título</label><input id="edit-title" type="text" value="${song.title}" class="form-input w-full p-2 rounded focus:outline-none focus:ring-2 focus:ring-accent-primary"></div><div><label for="edit-artist" class="text-sm block mb-1">Artista</label><input id="edit-artist" type="text" value="${song.artist}" class="form-input w-full p-2 rounded focus:outline-none focus:ring-2 focus:ring-accent-primary"></div><div><label for="edit-album" class="text-sm block mb-1">Álbum</label><input id="edit-album" type="text" value="${song.album}" class="form-input w-full p-2 rounded focus:outline-none focus:ring-2 focus:ring-accent-primary"></div></div><div class="flex justify-end space-x-2 mt-4"><button id="edit-cancel" class="bg-tertiary px-4 py-2 rounded-lg">Cancelar</button><button id="edit-save" class="action-btn px-4 py-2 rounded-lg">Guardar</button></div>`;
+
+            // Se añade el input de archivo y la previsualización de la imagen
+            const modalContent = `
+                <h2 class="text-xl font-bold text-primary">Editar Canción</h2>
+                <div class="space-y-4">
+                    <div class="flex items-center space-x-4">
+                        <img id="edit-art-preview" src="${song.art || 'https://placehold.co/96x96/24283b/c0caf5'}" class="w-24 h-24 rounded-lg object-cover bg-tertiary flex-shrink-0">
+                        <div class="flex-grow">
+                            <label for="edit-art-file" class="action-btn cursor-pointer inline-block text-center w-full px-3 py-2 rounded-lg text-sm">Cambiar Portada</label>
+                            <input id="edit-art-file" type="file" accept="image/*" class="hidden">
+                            <p class="text-xs text-center mt-2">Sube una nueva imagen para la carátula.</p>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="edit-title" class="text-sm block mb-1">Título</label>
+                        <input id="edit-title" type="text" value="${song.title}" class="form-input w-full p-2 rounded focus:outline-none focus:ring-2 focus:ring-accent-primary">
+                    </div>
+                    <div>
+                        <label for="edit-artist" class="text-sm block mb-1">Artista</label>
+                        <input id="edit-artist" type="text" value="${song.artist}" class="form-input w-full p-2 rounded focus:outline-none focus:ring-2 focus:ring-accent-primary">
+                    </div>
+                    <div>
+                        <label for="edit-album" class="text-sm block mb-1">Álbum</label>
+                        <input id="edit-album" type="text" value="${song.album}" class="form-input w-full p-2 rounded focus:outline-none focus:ring-2 focus:ring-accent-primary">
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-2 mt-6">
+                    <button id="edit-cancel" class="bg-tertiary px-4 py-2 rounded-lg">Cancelar</button>
+                    <button id="edit-save" class="action-btn px-4 py-2 rounded-lg">Guardar</button>
+                </div>`;
+            
             const modal = showModal(modalContent);
+            
+            const artPreview = modal.querySelector('#edit-art-preview');
+            const artFileInput = modal.querySelector('#edit-art-file');
+            let newArtData = null;
+
+            // Lógica para leer el archivo de imagen y mostrar la previsualización
+            artFileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        newArtData = event.target.result; // Guardar la imagen como DataURL (base64)
+                        artPreview.src = newArtData;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
             modal.querySelector('#edit-save').addEventListener('click', () => {
-                song.title = modal.querySelector('#edit-title').value.trim();
-                song.artist = modal.querySelector('#edit-artist').value.trim();
-                song.album = modal.querySelector('#edit-album').value.trim();
+                song.title = modal.querySelector('#edit-title').value.trim() || 'Título Desconocido';
+                song.artist = modal.querySelector('#edit-artist').value.trim() || 'Artista Desconocido';
+                song.album = modal.querySelector('#edit-album').value.trim() || 'Álbum Desconocido';
+                
+                // Si se seleccionó una nueva portada, se actualiza en el objeto de la canción
+                if (newArtData) {
+                    song.art = newArtData;
+                }
+
                 saveSongToDB(song); 
                 renderLibrary();
-                if (song.id === state.currentSongId) updatePlayerUI(song);
+                if (song.id === state.currentSongId) {
+                    updatePlayerUI(song);
+                    updateMediaSession(song);
+                }
                 updatePlayingStatusInLists();
                 closeModal();
                 showToast("Metadatos actualizados");
@@ -1078,9 +1131,9 @@
             const repeatIconSVG = {
                 none: `<polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path>`,
                 all: `<polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path>`,
-                one: `<polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path><text x="11" y="8" font-size="10" font-weight="bold" fill="currentColor" text-anchor="middle">1</text>`
+                one: `<path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/><path d="M14.5 10.5c-1-2-3-2.5-4.5-1-2.5 2.5 1.5 6.5 4.5 5.5.5-1.5-2-1-1.5-3 .5-.5 2-1 1.5-1.5z"/>`
             };
-            dom.repeatBtn.querySelector('svg').innerHTML = repeatIconSVG[state.repeatMode];
+            dom.repeatBtn.querySelector('svg').innerHTML = repeatIconSVG[state.repeatMode] || repeatIconSVG['none'];
         }
 
         function openEQModal() { const presets = { 'Pop': { bass: 4, mids: -2, treble: 5 }, 'Rock': { bass: 5, mids: 1, treble: 4 }, 'Jazz': { bass: 4, mids: 3, treble: 3 }, 'Clásica': { bass: -2, mids: 2, treble: 1 } }; const modalContent = `<div class="flex justify-between items-center mb-4"><h2 class="text-2xl font-bold">Ecualizador</h2><button id="close-eq-btn" class="p-2 rounded-full hover-bg text-2xl leading-none">&times;</button></div><div class="flex justify-around items-center p-4">${['bass','mids','treble'].map(type=>`<div class="knob-container"><div class="knob" data-type="${type}" style="transform: rotate(${((state.settings.eq[type]+20)/40*270)-135}deg)"></div><span class="knob-label">${type}</span></div>`).join('')}</div><div class="flex flex-wrap justify-center gap-2 mt-2"><button class="eq-preset-btn" data-preset="flat">Plano</button>${Object.keys(presets).map(p=>`<button class="eq-preset-btn" data-preset="${p}">${p}</button>`).join('')}</div>`; const modal = showModal(modalContent); const applyPreset=(name)=>{state.settings.eq=name==='flat'?{bass:0,mids:0,treble:0}:{...presets[name]};applyEQ();saveState();modal.querySelectorAll('.knob').forEach(k=>{const t=k.dataset.type;k.style.transform=`rotate(${((state.settings.eq[t]+20)/40*270)-135}deg)`})}; modal.querySelector('#close-eq-btn').addEventListener('click',closeModal);modal.querySelectorAll('.eq-preset-btn').forEach(b=>b.addEventListener('click',()=>applyPreset(b.dataset.preset))); modal.querySelectorAll('.knob').forEach(knob=>{const type=knob.dataset.type;let isDragging=false;const move=(e)=>{if(!isDragging)return;const r=knob.getBoundingClientRect();const cX=r.left+r.width/2;const cY=r.top+r.height/2;const clientX=e.touches?e.touches[0].clientX:e.clientX;const clientY=e.touches?e.touches[0].clientY:e.clientY;let a=Math.atan2(clientY-cY,clientX-cX)*180/Math.PI-90;let rot=Math.max(-135,Math.min(135,a));state.settings.eq[type]=Math.round((rot+135)/270*40-20);knob.style.transform=`rotate(${rot}deg)`;applyEQ()};const up=()=>{isDragging=false;saveState();document.removeEventListener('mousemove',move);document.removeEventListener('mouseup',up);document.removeEventListener('touchmove',move);document.removeEventListener('touchend',up)};const down=(e)=>{e.preventDefault();isDragging=true;document.addEventListener('mousemove',move);document.addEventListener('mouseup',up);document.addEventListener('touchmove',move);document.addEventListener('touchend',up)};knob.addEventListener('mousedown',down);knob.addEventListener('touchstart',down);knob.addEventListener('dblclick',()=>{state.settings.eq[type]=0;knob.style.transform='rotate(-135deg)';applyEQ();saveState()})}); }
@@ -1105,6 +1158,7 @@
                 { id: "download-view", svg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>Descargar</span>` } 
             ];
             dom.tabs.forEach((tab, index) => { tab.innerHTML = tabsData[index].svg; });
+            updateControlButtonsUI();
         }
         
         initDB(initApp);
