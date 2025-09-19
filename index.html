@@ -354,12 +354,10 @@
         const audioManager = (() => {
             function play(song, startTime = 0) {
                 if (!song || !song.data) {
-                    console.error("Intento de reproducir canción sin datos de audio.");
+                    console.error("Intento de reproducir una canción sin datos de audio.");
                     return;
                 }
 
-                // **SOLUCIÓN DEFINITIVA:** Se crea la URL de datos (Data URL) directamente.
-                // Es más directo y estable que los Blobs.
                 const audioSrc = `data:audio/mpeg;base64,${song.data}`;
 
                 audio1.pause();
@@ -443,8 +441,9 @@
             }, stepDuration);
         }
         
+        // **FUNCIÓN CORREGIDA**
         function crossfadeToSong(nextSong) {
-            if (!nextSong || isCrossfading) return;
+            if (!nextSong || isCrossfading || !nextSong.data) return;
             isCrossfading = true;
 
             const nextAudioSrc = `data:audio/mpeg;base64,${nextSong.data}`;
@@ -456,7 +455,7 @@
             const duration = state.settings.crossfadeDuration;
             fadeVolume(currentAudio, 0, duration, () => {
                 currentAudio.pause();
-                currentAudio.removeAttribute('src'); // Limpiar para liberar memoria
+                currentAudio.removeAttribute('src');
             });
             fadeVolume(standbyAudio, state.volume, duration);
 
@@ -466,6 +465,7 @@
                 standbyAudio = temp;
                 
                 state.currentSongId = nextSong.id;
+                state.contextIndex = state.contextQueue.findIndex(id => id === nextSong.id);
                 updatePlayerUI(nextSong);
                 updateMediaSession(nextSong);
                 updatePlayingStatusInLists();
@@ -476,6 +476,7 @@
             }, duration * 1000);
         }
 
+        // **FUNCIÓN CORREGIDA**
         function playNextSong(isAuto = false) {
              if (isCrossfading) return;
             if (state.repeatMode === 'one' && isAuto) {
@@ -609,7 +610,7 @@
                     emptyDiv.textContent = emptyMessage;
                     details.appendChild(emptyDiv);
                 } else {
-                     return null; // No renderizar la sección si está vacía y no tiene mensaje
+                     return null;
                 }
                 return details;
             };
