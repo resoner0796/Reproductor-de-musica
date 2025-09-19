@@ -148,8 +148,7 @@
             
             <div id="player-view" class="view active justify-between h-full space-y-4">
                  <div class="flex-shrink-0 flex justify-between items-center">
-                    <div class="w-10 h-10"></div>
-                    <h3 class="text-lg font-semibold text-primary">Reproduciendo</h3>
+                    <div class="w-10 h-10"></div> <h3 class="text-lg font-semibold text-primary">Reproduciendo</h3>
                     <div class="flex items-center space-x-2 z-10">
                         <button id="settings-btn" class="p-2 hover-bg rounded-full"></button>
                     </div>
@@ -299,6 +298,7 @@
         let db; 
         let currentAudio = audio1;
         let standbyAudio = audio2;
+        let isCrossfading = false;
         
         function initDB(onSuccess) {
             const request = indexedDB.open('MusicPlayerDB', 2);
@@ -350,7 +350,10 @@
             const { startTime = 0, contextType = 'library', contextId = null, isCrossfade = false } = options;
             
             const songToPlay = getSongById(songId);
-            if (!songToPlay) return;
+            if (!songToPlay) {
+                console.error("Canción no encontrada:", songId);
+                return;
+            }
 
             setContext(contextType, contextId);
 
@@ -387,6 +390,7 @@
         }
 
         function performCrossfade(nextSong) {
+            isCrossfading = true;
             const nextAudioSrc = `data:audio/mpeg;base64,${nextSong.data}`;
             
             standbyAudio.src = nextAudioSrc;
@@ -400,13 +404,29 @@
             });
             fadeVolume(standbyAudio, state.volume, duration);
 
-            // El cambio de `currentAudio` y `standbyAudio` debe hacerse después del fade
             setTimeout(() => {
                 let temp = currentAudio;
                 currentAudio = standbyAudio;
                 standbyAudio = temp;
-                updateUIonPlayPause(); // Asegurarse que el UI refleje el play state
+                isCrossfading = false;
+                updateUIonPlayPause();
             }, duration * 1000);
+        }
+        
+        function fadeVolume(audio, to, duration, onComplete) {
+            const from = audio.volume;
+            const steps = 50;
+            const stepDuration = (duration * 1000) / steps;
+            const delta = (to - from) / steps;
+            let currentStep = 0;
+            const timer = setInterval(() => {
+                audio.volume = Math.max(0, Math.min(1, audio.volume + delta));
+                if (++currentStep >= steps) {
+                    clearInterval(timer);
+                    audio.volume = to;
+                    if (onComplete) onComplete();
+                }
+            }, stepDuration);
         }
 
         function togglePlayPause() {
@@ -415,19 +435,20 @@
                 state.isPlaying = false;
             } else if (state.currentSongId) {
                 const song = getSongById(state.currentSongId);
-                // Si la fuente está vacía (al reabrir la app), la cargamos antes de reproducir
-                if (!currentAudio.src) {
+                if (!currentAudio.src && song) {
                     currentAudio.src = `data:audio/mpeg;base64,${song.data}`;
                 }
                 currentAudio.play().catch(e => console.error("Error al reanudar:", e));
                 state.isPlaying = true;
             } else if (state.library.length > 0) {
-                playSong(state.library[0].id, { contextType: 'library' });
+                playSong(state.library[0].id);
             }
             updateUIonPlayPause();
         }
 
         function playNextSong(isAuto = false) {
+            if (isCrossfading) return;
+            
             if (state.repeatMode === 'one' && isAuto) {
                 playSong(state.currentSongId, { startTime: 0, contextType: state.currentContext.type, contextId: state.currentContext.id });
                 return;
@@ -435,21 +456,29 @@
             
             const nextSongInQueue = state.queue.shift();
             if (nextSongInQueue) {
-                playSong(nextSongInQueue, { contextType: state.currentContext.type, contextId: state.currentContext.id });
+                playSong(nextSongInQueue, { contextType: state.currentContext.type, contextId: state.currentContext.id, isCrossfade: isAuto && state.settings.crossfadeEnabled });
                 return;
             }
 
-            let nextIndex = state.contextIndex + 1;
+            let nextIndex;
             if (state.isShuffle) {
-                if (state.contextQueue.length <= 1) { 
-                    if (state.repeatMode === 'none') { state.isPlaying = false; updateUIonPlayPause(); return; }
+                if (state.contextQueue.length <= 1) {
+                    if (state.repeatMode === 'all') {
+                        nextIndex = 0;
+                    } else {
+                        state.isPlaying = false;
+                        updateUIonPlayPause();
+                        return;
+                    }
+                } else {
+                    let randomIndex;
+                    do { 
+                        randomIndex = Math.floor(Math.random() * state.contextQueue.length);
+                    } while (state.contextQueue[randomIndex] === state.currentSongId);
+                    nextIndex = randomIndex;
                 }
-                let randomIndex;
-                do { 
-                    randomIndex = Math.floor(Math.random() * state.contextQueue.length);
-                } while (state.contextQueue.length > 1 && state.contextQueue[randomIndex] === state.currentSongId);
-                nextIndex = randomIndex;
             } else {
+                nextIndex = state.contextIndex + 1;
                  if (nextIndex >= state.contextQueue.length) {
                     if (state.repeatMode === 'all') {
                         nextIndex = 0;
@@ -463,12 +492,12 @@
             
             const nextSongId = state.contextQueue[nextIndex];
             if (nextSongId) {
-                const isCrossfade = isAuto && state.settings.crossfadeEnabled;
-                playSong(nextSongId, { isCrossfade, contextType: state.currentContext.type, contextId: state.currentContext.id });
+                playSong(nextSongId, { isCrossfade: isAuto && state.settings.crossfadeEnabled, contextType: state.currentContext.type, contextId: state.currentContext.id });
             }
         }
 
         function playPrevSong() {
+            if (isCrossfading) return;
             let prevIndex = state.contextIndex - 1;
             if (prevIndex < 0) {
                 prevIndex = state.contextQueue.length - 1; 
@@ -915,7 +944,6 @@
                 { id: "download-view", svg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>Descargar</span>` } 
             ];
             dom.tabs.forEach((tab, index) => { tab.innerHTML = tabsData[index].svg; });
-            updateControlButtonsUI();
         }
         
         initDB(initApp);
