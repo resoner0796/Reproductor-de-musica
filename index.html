@@ -342,46 +342,30 @@
             transaction.objectStore('songs').put(songToSave);
         }
 
-        // **CORRECCIÓN:** No se crea la URL aquí para evitar que se invalide al cerrar la app.
         function loadSongsFromDB(onLoad) {
             if (!db) return;
             const request = db.transaction(['songs'], 'readonly').objectStore('songs').getAll();
             request.onsuccess = () => {
-                // Simplemente cargamos los datos, la URL se creará justo antes de reproducir.
                 const songs = request.result; 
                 onLoad(songs);
             };
         }
         
-        function base64ToBlob(base64, contentType = '', sliceSize = 512) {
-            const byteCharacters = atob(base64);
-            const byteArrays = [];
-            for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
-                const slice = byteCharacters.slice(offset, offset + sliceSize);
-                const byteNumbers = new Array(slice.length);
-                for (let i = 0; i < slice.length; i++) {
-                    byteNumbers[i] = slice.charCodeAt(i);
-                }
-                const byteArray = new Uint8Array(byteNumbers);
-                byteArrays.push(byteArray);
-            }
-            return new Blob(byteArrays, { type: contentType });
-        }
-        
         const audioManager = (() => {
             function play(song, startTime = 0) {
-                if (!song) return; 
-
-                // **CORRECCIÓN:** Se crea una URL nueva y válida justo aquí.
-                if (!song.url || !song.url.startsWith('blob:')) {
-                    const blob = base64ToBlob(song.data, 'audio/mpeg');
-                    song.url = URL.createObjectURL(blob);
+                if (!song || !song.data) {
+                    console.error("Intento de reproducir canción sin datos de audio.");
+                    return;
                 }
+
+                // **SOLUCIÓN DEFINITIVA:** Se crea la URL de datos (Data URL) directamente.
+                // Es más directo y estable que los Blobs.
+                const audioSrc = `data:audio/mpeg;base64,${song.data}`;
 
                 audio1.pause();
                 audio2.pause();
 
-                currentAudio.src = song.url; 
+                currentAudio.src = audioSrc; 
                 currentAudio.currentTime = startTime; 
                 currentAudio.volume = state.volume;
                 const playPromise = currentAudio.play();
@@ -463,21 +447,16 @@
             if (!nextSong || isCrossfading) return;
             isCrossfading = true;
 
-            if (!nextSong.url || !nextSong.url.startsWith('blob:')) {
-                const blob = base64ToBlob(nextSong.data, 'audio/mpeg');
-                nextSong.url = URL.createObjectURL(blob);
-            }
+            const nextAudioSrc = `data:audio/mpeg;base64,${nextSong.data}`;
 
-            standbyAudio.src = nextSong.url;
+            standbyAudio.src = nextAudioSrc;
             standbyAudio.volume = 0;
             standbyAudio.play().catch(e => console.error("Error al iniciar crossfade:", e));
 
             const duration = state.settings.crossfadeDuration;
             fadeVolume(currentAudio, 0, duration, () => {
                 currentAudio.pause();
-                if (currentAudio.src.startsWith('blob:')) {
-                    URL.revokeObjectURL(currentAudio.src);
-                }
+                currentAudio.removeAttribute('src'); // Limpiar para liberar memoria
             });
             fadeVolume(standbyAudio, state.volume, duration);
 
@@ -615,7 +594,6 @@
                 return acc;
             }, {});
 
-            // **NUEVO:** Filtrar canciones descargadas
             const downloadedSongs = state.library.filter(song => song.isDownloaded);
 
             const createSection = (title, content, emptyMessage = "") => {
@@ -630,6 +608,8 @@
                     emptyDiv.className = 'text-center text-secondary p-4 text-sm';
                     emptyDiv.textContent = emptyMessage;
                     details.appendChild(emptyDiv);
+                } else {
+                     return null; // No renderizar la sección si está vacía y no tiene mensaje
                 }
                 return details;
             };
@@ -641,13 +621,13 @@
             songsContainer.appendChild(songsList);
             dom.libraryContent.appendChild(createSection('Canciones', songsContainer));
             
-            // **NUEVO:** Renderizar la sección de descargas
             const downloadsContainer = document.createElement('div');
             const downloadsList = document.createElement('ul');
             downloadsList.className = 'space-y-1';
             downloadedSongs.forEach(song => downloadsList.appendChild(createSongListItem(song)));
             downloadsContainer.appendChild(downloadsList);
-            dom.libraryContent.appendChild(createSection('Descargas', downloadsContainer, "Aún no tienes descargas."));
+            const downloadsSection = createSection('Descargas', downloadsContainer, "Aún no tienes descargas.");
+            if (downloadsSection) dom.libraryContent.appendChild(downloadsSection);
 
             const artistsContainer = document.createElement('div');
             Object.keys(artists).sort().forEach(artistName => {
@@ -683,7 +663,6 @@
             setContext('library');
         }
 
-
         function updatePlayingStatusInLists() { document.querySelectorAll('.list-item').forEach(item => item.classList.toggle('playing', item.dataset.songId === state.currentSongId)); }
         
         function updatePlayerUI(song) {
@@ -711,13 +690,11 @@
             });
         }
 
-        // **CORRECCIÓN:** Lógica de reproducción simplificada para manejar URLs inválidas.
         function togglePlayPause() {
             if (state.isPlaying) {
                 audioManager.pause();
             } else if (state.currentSongId) {
                 const song = getSongById(state.currentSongId);
-                // Usamos play() con la posición actual para regenerar la URL si es necesario.
                 audioManager.play(song, currentAudio.currentTime); 
             } else if (state.library.length > 0) {
                 playSongFromContext(state.library[0].id, 'library');
@@ -813,7 +790,6 @@
                                 album: album || 'Desconocido', 
                                 art: picture ? `data:${picture.format};base64,${window.btoa(picture.data.reduce((acc, byte) => acc + String.fromCharCode(byte), ''))}` : null, 
                                 data, 
-                                // 'url' se creará al reproducir
                             });
                         }, onError: (error) => {
                              resolve({ 
@@ -847,14 +823,8 @@
             
             const song = getSongById(songId);
             if(song) {
-                const previousSong = getSongById(state.currentSongId);
-                if (previousSong && previousSong.id !== song.id && previousSong.url && previousSong.url.startsWith('blob:')) {
-                    URL.revokeObjectURL(previousSong.url);
-                }
-
                 state.contextIndex = state.contextQueue.findIndex(id => id === songId); 
                 state.currentSongId = songId;
-
                 audioManager.play(song); 
                 updatePlayerUI(song); 
                 updateMediaSession(song); 
