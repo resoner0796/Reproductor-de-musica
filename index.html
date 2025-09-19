@@ -16,41 +16,34 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
 
     <style>
-        /* TEMA: Medianoche (Default) */
         :root { 
             --bg-primary: #1a1b26; --bg-secondary: #24283b; --bg-tertiary: #414868;
             --bg-interactive: #565f89; --text-primary: #c0caf5; --text-secondary: #a9b1d6;
             --accent-primary: #bb9af7; --accent-hover: #dbb2ff;
             --bg-glass: rgba(36, 40, 59, 0.65); --border-glass: rgba(192, 202, 245, 0.15);
         }
-        /* TEMA: Ámbar */
         .theme-sunset {
             --bg-primary: #2d1d2b; --bg-secondary: #452a42; --bg-tertiary: #6d435a;
             --bg-interactive: #9d6b7b; --text-primary: #f5e0e6; --text-secondary: #e6c0c8;
             --accent-primary: #ff7a5c; --accent-hover: #ff9e86;
             --bg-glass: rgba(69, 42, 66, 0.65); --border-glass: rgba(245, 224, 230, 0.15);
         }
-        /* TEMA: Bosque */
         .theme-ocean {
             --bg-primary: #1f2c27; --bg-secondary: #2a3b34; --bg-tertiary: #4a5c53;
             --bg-interactive: #6b8072; --text-primary: #d4e5d8; --text-secondary: #b8ccbe;
             --accent-primary: #79dcaa; --accent-hover: #93ffc7;
             --bg-glass: rgba(42, 59, 52, 0.65); --border-glass: rgba(212, 229, 216, 0.15);
         }
-
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg-primary); color: var(--text-secondary); transition: background-color 0.3s; }
-        
         .main-container { display: flex; flex-direction: column; height: 100%; width: 100%; max-width: 450px; margin: auto; background-color: var(--bg-primary); box-shadow: 0 0 20px rgba(0,0,0,0.5); }
         main { flex-grow: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; position: relative; }
-
         .glass-effect {
             background-color: var(--bg-glass);
             -webkit-backdrop-filter: blur(14px);
             backdrop-filter: blur(14px);
             border: 1px solid var(--border-glass);
         }
-        .player-view-content, .controls-container, #mini-player-bar { background-color: transparent; }
         .player-view-content > div, .controls-container-inner, .mini-player-inner { border-radius: 0.75rem; }
         .tab-bar { 
             background-color: var(--bg-glass);
@@ -64,7 +57,6 @@
             backdrop-filter: blur(14px) !important;
             border: 1px solid var(--border-glass) !important;
         }
-
         h1, h2, h3, .text-primary { color: var(--text-primary); }
         .play-pause-btn, .action-btn { background-color: var(--accent-primary); color: var(--bg-primary); }
         .play-pause-btn:hover, .action-btn:hover { background-color: var(--accent-hover); }
@@ -74,32 +66,26 @@
         .hover-bg:hover { background-color: var(--bg-tertiary); }
         .list-item:hover, details[open] > summary { background-color: var(--bg-interactive); }
         .list-item.playing { background-color: var(--bg-interactive); color: var(--accent-primary); border-left: 3px solid var(--accent-primary); padding-left: calc(0.75rem - 3px); }
-        
         input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; background: var(--bg-tertiary); border-radius: 5px; outline: none; cursor: pointer; }
         input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; background: var(--text-primary); border-radius: 50%; }
-        
         .modal-backdrop { transition: opacity 0.3s ease-in-out; background-color: rgba(0,0,0,0.7); }
         .form-input { color: var(--text-primary); background-color: var(--bg-secondary); border: 1px solid var(--bg-tertiary); }
-        
         .view { display: none; height: 100%; }
         .view.active { display: flex; flex-direction: column; }
         #library-view.active, #playlists-view.active, #download-view.active { display: block; }
-        
         main::-webkit-scrollbar { width: 8px; }
         main::-webkit-scrollbar-track { background: var(--bg-secondary); }
         main::-webkit-scrollbar-thumb { background-color: var(--bg-interactive); border-radius: 10px; border: 2px solid var(--bg-secondary); }
-        
         #bottom-bar-wrapper { flex-shrink: 0; position: relative; }
         #mini-player-bar {
             transition: transform 0.3s ease-in-out;
             transform: translateY(100%);
             position: absolute;
-            bottom: 60px; /* Altura aproximada del tab-bar */
+            bottom: 60px;
             left: 0.5rem; right: 0.5rem;
             border-radius: 0.5rem;
         }
         #mini-player-bar.visible { transform: translateY(0); }
-
         .toast-notification {
             position: fixed;
             bottom: 80px; left: 50%;
@@ -110,16 +96,15 @@
             z-index: 1000; opacity: 0;
             transition: opacity 0.3s ease, transform 0.3s ease;
         }
-        
         #now-playing-container {
             position: absolute;
-            top: 60px; /* Debajo de la barra superior */
+            top: 60px;
             right: 1rem;
             width: 80%;
             max-width: 320px;
             max-height: 50%;
             border-radius: 0.75rem;
-            z-index: 45; /* Encima de todo menos modales */
+            z-index: 45;
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -136,7 +121,6 @@
         #now-playing-list { overflow-y: auto; }
         #now-playing-list .list-item { padding-left: 0.75rem; padding-right: 0.75rem; }
         #now-playing-backdrop { position: fixed; inset: 0; z-index: 44; }
-        
         #library-view details summary {
             padding: 0.75rem 0.5rem;
             cursor: pointer;
@@ -147,17 +131,13 @@
             transition: background-color 0.2s;
             border-radius: 0.5rem;
         }
-        #library-view details > div {
-            padding-left: 1rem;
-        }
+        #library-view details > div { padding-left: 1rem; }
         #library-view details .sub-list-item {
             padding: 0.5rem;
             border-radius: 0.5rem;
             cursor: pointer;
         }
-        #library-view details .sub-list-item:hover {
-            background-color: var(--bg-tertiary);
-        }
+        #library-view details .sub-list-item:hover { background-color: var(--bg-tertiary); }
     </style>
 </head>
 <body>
@@ -168,7 +148,8 @@
             
             <div id="player-view" class="view active justify-between h-full space-y-4">
                  <div class="flex-shrink-0 flex justify-between items-center">
-                    <div class="w-10 h-10"></div> <h3 class="text-lg font-semibold text-primary">Reproduciendo</h3>
+                    <div class="w-10 h-10"></div>
+                    <h3 class="text-lg font-semibold text-primary">Reproduciendo</h3>
                     <div class="flex items-center space-x-2 z-10">
                         <button id="settings-btn" class="p-2 hover-bg rounded-full"></button>
                     </div>
@@ -318,7 +299,6 @@
         let db; 
         let currentAudio = audio1;
         let standbyAudio = audio2;
-        let isCrossfading = false;
         
         function initDB(onSuccess) {
             const request = indexedDB.open('MusicPlayerDB', 2);
@@ -338,119 +318,80 @@
         function saveSongToDB(song) {
             if (!db) return;
             const transaction = db.transaction(['songs'], 'readwrite');
-            const { url, ...songToSave } = song; 
-            transaction.objectStore('songs').put(songToSave);
+            transaction.objectStore('songs').put(song);
         }
 
         function loadSongsFromDB(onLoad) {
             if (!db) return;
             const request = db.transaction(['songs'], 'readonly').objectStore('songs').getAll();
             request.onsuccess = () => {
-                const songs = request.result; 
-                onLoad(songs);
+                onLoad(request.result);
             };
         }
-        
-        const audioManager = (() => {
-            function play(song, startTime = 0) {
-                if (!song || !song.data) {
-                    console.error("Intento de reproducir una canción sin datos de audio.");
-                    return;
-                }
-
-                const audioSrc = `data:audio/mpeg;base64,${song.data}`;
-
-                audio1.pause();
-                audio2.pause();
-
-                currentAudio.src = audioSrc; 
-                currentAudio.currentTime = startTime; 
-                currentAudio.volume = state.volume;
-                const playPromise = currentAudio.play();
-                
-                if (playPromise !== undefined) {
-                    playPromise.then(() => { 
-                        state.isPlaying = true; 
-                        updateUIonPlayPause(); 
-                    }).catch(e => {
-                        console.error("Error al reproducir:", e);
-                        state.isPlaying = false;
-                        updateUIonPlayPause();
-                    });
-                }
-            }
-            function pause() { 
-                currentAudio.pause(); 
-                state.isPlaying = false; 
-                updateUIonPlayPause(); 
-            }
-            
-            [audio1, audio2].forEach(audio => {
-                audio.addEventListener('timeupdate', () => { 
-                    if (audio === currentAudio) {
-                        updateProgressUI(audio.currentTime, audio.duration); 
-                        if (state.settings.crossfadeEnabled && !isCrossfading && audio.duration > 0 && (audio.duration - audio.currentTime) <= state.settings.crossfadeDuration) {
-                            playNextSong(true);
-                        }
-                    }
-                });
-                audio.addEventListener('ended', () => { 
-                    if (audio === currentAudio && !isCrossfading) handleTrackEnd(); 
-                });
-            });
-            
-            return { 
-                play, pause, 
-                seek: (time) => { if (!isCrossfading) currentAudio.currentTime = time; },
-                setVolume: (vol) => { 
-                    currentAudio.volume = vol; 
-                    standbyAudio.volume = vol;
-                } 
-            };
-        })();
         
         function getSongById(id) { return state.library.find(song => song.id === id); }
-        
-        function getNextSongInContext() {
-            if (state.isShuffle) {
-                if (state.contextQueue.length <= 1) return (state.repeatMode !== 'none') ? getSongById(state.currentSongId) : null;
-                let randomIndex;
-                do { randomIndex = Math.floor(Math.random() * state.contextQueue.length); } while (state.contextQueue.length > 1 && state.contextQueue[randomIndex] === state.currentSongId);
-                state.contextIndex = randomIndex; return getSongById(state.contextQueue[randomIndex]);
+
+        function setContext(type, id = null) {
+            if (state.currentContext.type === type && state.currentContext.id === id) return;
+            state.currentContext = { type, id };
+            if (type === 'library') {
+                state.contextQueue = state.library.map(s => s.id);
+            } else if (type === 'playlist') {
+                const playlist = state.playlists.find(p => p.id === id);
+                if (playlist) state.contextQueue = [...playlist.songIds];
             } else {
-                let nextIndex = state.contextIndex + 1;
-                if (state.repeatMode === 'all' && nextIndex >= state.contextQueue.length) nextIndex = 0;
-                if (nextIndex >= state.contextQueue.length && state.repeatMode !== 'all') return null;
-                state.contextIndex = nextIndex; return getSongById(state.contextQueue[nextIndex]);
+                state.contextQueue = [];
             }
         }
         
-        function fadeVolume(audio, to, duration, onComplete) {
-            const from = audio.volume;
-            const steps = 50;
-            const stepDuration = (duration * 1000) / steps;
-            const delta = (to - from) / steps;
-            let currentStep = 0;
-            const timer = setInterval(() => {
-                audio.volume = Math.max(0, Math.min(1, audio.volume + delta));
-                if (++currentStep >= steps) {
-                    clearInterval(timer);
-                    audio.volume = to;
-                    if (onComplete) onComplete();
-                }
-            }, stepDuration);
+        // --- LÓGICA DE REPRODUCCIÓN REESTRUCTURADA ---
+
+        function playSong(songId, options = {}) {
+            const { startTime = 0, contextType = 'library', contextId = null, isCrossfade = false } = options;
+            
+            const songToPlay = getSongById(songId);
+            if (!songToPlay) return;
+
+            setContext(contextType, contextId);
+
+            const previousSongId = state.currentSongId;
+            const isPlayingSomething = state.isPlaying && previousSongId;
+            
+            // Actualizar estado de la app INMEDIATAMENTE
+            state.currentSongId = songToPlay.id;
+            state.contextIndex = state.contextQueue.findIndex(id => id === songId);
+            state.isPlaying = true;
+
+            // Decidir si hacer crossfade o reproducir directamente
+            if (isCrossfade && isPlayingSomething && previousSongId !== songId) {
+                performCrossfade(songToPlay);
+            } else {
+                performDirectPlay(songToPlay, startTime);
+            }
+            
+            // Actualizar UI y guardar estado
+            updatePlayerUI(songToPlay);
+            updateMediaSession(songToPlay);
+            updatePlayingStatusInLists();
+            renderNowPlayingList();
+            saveState();
         }
-        
-        // **FUNCIÓN CORREGIDA**
-        function crossfadeToSong(nextSong) {
-            if (!nextSong || isCrossfading || !nextSong.data) return;
-            isCrossfading = true;
 
+        function performDirectPlay(song, startTime = 0) {
+            const audioSrc = `data:audio/mpeg;base64,${song.data}`;
+            currentAudio.src = audioSrc;
+            currentAudio.currentTime = startTime;
+            currentAudio.volume = state.volume;
+            currentAudio.play().catch(e => console.error("Error en reproducción directa:", e));
+            updateUIonPlayPause();
+        }
+
+        function performCrossfade(nextSong) {
             const nextAudioSrc = `data:audio/mpeg;base64,${nextSong.data}`;
-
+            
             standbyAudio.src = nextAudioSrc;
             standbyAudio.volume = 0;
-            standbyAudio.play().catch(e => console.error("Error al iniciar crossfade:", e));
+            standbyAudio.play().catch(e => console.error("Error iniciando crossfade:", e));
 
             const duration = state.settings.crossfadeDuration;
             fadeVolume(currentAudio, 0, duration, () => {
@@ -459,58 +400,101 @@
             });
             fadeVolume(standbyAudio, state.volume, duration);
 
+            // El cambio de `currentAudio` y `standbyAudio` debe hacerse después del fade
             setTimeout(() => {
                 let temp = currentAudio;
                 currentAudio = standbyAudio;
                 standbyAudio = temp;
-                
-                state.currentSongId = nextSong.id;
-                state.contextIndex = state.contextQueue.findIndex(id => id === nextSong.id);
-                updatePlayerUI(nextSong);
-                updateMediaSession(nextSong);
-                updatePlayingStatusInLists();
-                renderNowPlayingList();
-                saveState();
-                
-                isCrossfading = false;
+                updateUIonPlayPause(); // Asegurarse que el UI refleje el play state
             }, duration * 1000);
         }
 
-        // **FUNCIÓN CORREGIDA**
-        function playNextSong(isAuto = false) {
-             if (isCrossfading) return;
-            if (state.repeatMode === 'one' && isAuto) {
-                playSongFromContext(state.currentSongId, state.currentContext.type, state.currentContext.id);
-                return;
-            }
-
-            let nextSongToPlay = getSongById(state.queue.shift()) || getNextSongInContext();
-            
-            if (!nextSongToPlay) {
-                if (!isAuto) {
-                    state.isPlaying = false;
-                    updateUIonPlayPause();
+        function togglePlayPause() {
+            if (state.isPlaying) {
+                currentAudio.pause();
+                state.isPlaying = false;
+            } else if (state.currentSongId) {
+                const song = getSongById(state.currentSongId);
+                // Si la fuente está vacía (al reabrir la app), la cargamos antes de reproducir
+                if (!currentAudio.src) {
+                    currentAudio.src = `data:audio/mpeg;base64,${song.data}`;
                 }
+                currentAudio.play().catch(e => console.error("Error al reanudar:", e));
+                state.isPlaying = true;
+            } else if (state.library.length > 0) {
+                playSong(state.library[0].id, { contextType: 'library' });
+            }
+            updateUIonPlayPause();
+        }
+
+        function playNextSong(isAuto = false) {
+            if (state.repeatMode === 'one' && isAuto) {
+                playSong(state.currentSongId, { startTime: 0, contextType: state.currentContext.type, contextId: state.currentContext.id });
+                return;
+            }
+            
+            const nextSongInQueue = state.queue.shift();
+            if (nextSongInQueue) {
+                playSong(nextSongInQueue, { contextType: state.currentContext.type, contextId: state.currentContext.id });
                 return;
             }
 
-            if (isAuto && state.settings.crossfadeEnabled) {
-                crossfadeToSong(nextSongToPlay);
+            let nextIndex = state.contextIndex + 1;
+            if (state.isShuffle) {
+                if (state.contextQueue.length <= 1) { 
+                    if (state.repeatMode === 'none') { state.isPlaying = false; updateUIonPlayPause(); return; }
+                }
+                let randomIndex;
+                do { 
+                    randomIndex = Math.floor(Math.random() * state.contextQueue.length);
+                } while (state.contextQueue.length > 1 && state.contextQueue[randomIndex] === state.currentSongId);
+                nextIndex = randomIndex;
             } else {
-                playSongFromContext(nextSongToPlay.id, state.currentContext.type, state.currentContext.id);
+                 if (nextIndex >= state.contextQueue.length) {
+                    if (state.repeatMode === 'all') {
+                        nextIndex = 0;
+                    } else {
+                        state.isPlaying = false;
+                        updateUIonPlayPause();
+                        return;
+                    }
+                }
+            }
+            
+            const nextSongId = state.contextQueue[nextIndex];
+            if (nextSongId) {
+                const isCrossfade = isAuto && state.settings.crossfadeEnabled;
+                playSong(nextSongId, { isCrossfade, contextType: state.currentContext.type, contextId: state.currentContext.id });
             }
         }
 
         function playPrevSong() {
-            if (isCrossfading) return;
-            let prevIndex = (state.contextIndex > 0 && !state.isShuffle) ? state.contextIndex - 1 : 0;
+            let prevIndex = state.contextIndex - 1;
+            if (prevIndex < 0) {
+                prevIndex = state.contextQueue.length - 1; 
+            }
             const prevSongId = state.contextQueue[prevIndex];
             if (prevSongId) {
-                playSongFromContext(prevSongId, state.currentContext.type, state.currentContext.id);
+                playSong(prevSongId, { contextType: state.currentContext.type, contextId: state.currentContext.id });
             }
         }
         
-        function handleTrackEnd() { if (state.isPlaying) playNextSong(true); }
+        function handleTrackEnd() {
+            if (state.isPlaying) {
+                playNextSong(true);
+            }
+        }
+
+        [audio1, audio2].forEach(audio => {
+            audio.addEventListener('timeupdate', () => { 
+                if (audio === currentAudio) updateProgressUI(audio.currentTime, audio.duration);
+            });
+            audio.addEventListener('ended', () => { 
+                if (audio === currentAudio) handleTrackEnd();
+            });
+        });
+
+        // --- FIN DE LÓGICA DE REPRODUCCIÓN ---
         
         function initApp() {
             loadState(); 
@@ -556,13 +540,12 @@
             
             item.addEventListener('click', (e) => {
                 if (e.target.closest('.options-btn')) return;
-
                 const contextList = item.closest('ul');
-                if (contextList && contextList.dataset.context === 'playlist') { 
-                    playSongFromContext(song.id, 'playlist', contextList.dataset.playlistId); 
-                } else { 
-                    playSongFromContext(song.id, 'library'); 
-                }
+                const context = contextList && contextList.dataset.context;
+                playSong(song.id, { 
+                    contextType: context === 'playlist' ? 'playlist' : 'library', 
+                    contextId: context === 'playlist' ? contextList.dataset.playlistId : null 
+                });
             });
 
             item.querySelector('.options-btn').addEventListener('click', (e) => {
@@ -582,19 +565,8 @@
                 dom.libraryContent.innerHTML = `<div class="text-center text-secondary p-8">Tu biblioteca está vacía.</div>`;
                 return;
             }
-
-            const artists = state.library.reduce((acc, song) => {
-                (acc[song.artist] = acc[song.artist] || []).push(song);
-                return acc;
-            }, {});
-
-            const albums = state.library.reduce((acc, song) => {
-                if (song.album && song.album !== 'Desconocido') {
-                    (acc[song.album] = acc[song.album] || []).push(song);
-                }
-                return acc;
-            }, {});
-
+            const artists = state.library.reduce((acc, song) => { (acc[song.artist] = acc[song.artist] || []).push(song); return acc; }, {});
+            const albums = state.library.reduce((acc, song) => { if (song.album && song.album !== 'Desconocido') { (acc[song.album] = acc[song.album] || []).push(song); } return acc; }, {});
             const downloadedSongs = state.library.filter(song => song.isDownloaded);
 
             const createSection = (title, content, emptyMessage = "") => {
@@ -609,9 +581,7 @@
                     emptyDiv.className = 'text-center text-secondary p-4 text-sm';
                     emptyDiv.textContent = emptyMessage;
                     details.appendChild(emptyDiv);
-                } else {
-                     return null;
-                }
+                } else { return null; }
                 return details;
             };
 
@@ -661,7 +631,6 @@
             dom.libraryContent.appendChild(createSection('Álbumes', albumsContainer));
             
             updatePlayingStatusInLists();
-            setContext('library');
         }
 
         function updatePlayingStatusInLists() { document.querySelectorAll('.list-item').forEach(item => item.classList.toggle('playing', item.dataset.songId === state.currentSongId)); }
@@ -691,17 +660,6 @@
             });
         }
 
-        function togglePlayPause() {
-            if (state.isPlaying) {
-                audioManager.pause();
-            } else if (state.currentSongId) {
-                const song = getSongById(state.currentSongId);
-                audioManager.play(song, currentAudio.currentTime); 
-            } else if (state.library.length > 0) {
-                playSongFromContext(state.library[0].id, 'library');
-            }
-        }
-
         function setupEventListeners() {
             dom.tabs.forEach(tab => tab.addEventListener('click', () => switchView(tab.dataset.view)));
             dom.playPauseBtn.addEventListener('click', togglePlayPause);
@@ -711,10 +669,11 @@
             dom.prevBtn.addEventListener('click', playPrevSong);
             dom.shuffleBtn.addEventListener('click', toggleShuffle); 
             dom.repeatBtn.addEventListener('click', cycleRepeatMode);
-            dom.progressBar.addEventListener('input', (e) => audioManager.seek((e.target.value / 100) * (currentAudio.duration || 0)));
+            dom.progressBar.addEventListener('input', (e) => currentAudio.currentTime = (e.target.value / 100) * (currentAudio.duration || 0));
             dom.volumeSlider.addEventListener('input', (e) => { 
                 state.volume = parseFloat(e.target.value); 
-                audioManager.setVolume(state.volume); 
+                currentAudio.volume = state.volume; 
+                standbyAudio.volume = state.volume;
             });
             dom.volumeSlider.addEventListener('change', saveState);
             dom.addFilesBtn.addEventListener('click', () => dom.fileInput.click());
@@ -765,7 +724,7 @@
                 });
                 renderLibrary(); 
                 if (wasEmpty && newSongs.length > 0) {
-                    playSongFromContext(newSongs[0].id, 'library');
+                    playSong(newSongs[0].id);
                 }
             } catch (error) {
                 console.error("Error procesando archivos:", error);
@@ -780,7 +739,6 @@
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const data = arrayBufferToBase64(e.target.result); 
-                    
                     window.jsmediatags.read(file, {
                         onSuccess: (tag) => {
                             const { title, artist, album, picture } = tag.tags;
@@ -796,10 +754,7 @@
                              resolve({ 
                                 id: self.crypto.randomUUID(), 
                                 title: file.name.replace(/\.[^/.]+$/, ""), 
-                                artist: 'Desconocido', 
-                                album: 'Desconocido', 
-                                art: null, 
-                                data, 
+                                artist: 'Desconocido', album: 'Desconocido', art: null, data, 
                             });
                         }
                     });
@@ -807,32 +762,6 @@
                 reader.onerror = (error) => reject(error);
                 reader.readAsArrayBuffer(file);
             });
-        }
-        
-        function setContext(type, id = null) {
-            state.currentContext = { type, id };
-            if (type === 'library') state.contextQueue = state.library.map(s => s.id);
-            else if (type === 'playlist') {
-                const playlist = state.playlists.find(p => p.id === id); if (playlist) state.contextQueue = playlist.songIds;
-            } else { state.contextQueue = []; }
-            state.contextIndex = state.contextQueue.findIndex(sId => sId === state.currentSongId);
-        }
-        
-        function playSongFromContext(songId, contextType, contextId = null) {
-            if (isCrossfading) return;
-            if (state.currentContext.type !== contextType || state.currentContext.id !== contextId) { setContext(contextType, contextId); }
-            
-            const song = getSongById(songId);
-            if(song) {
-                state.contextIndex = state.contextQueue.findIndex(id => id === songId); 
-                state.currentSongId = songId;
-                audioManager.play(song); 
-                updatePlayerUI(song); 
-                updateMediaSession(song); 
-                updatePlayingStatusInLists(); 
-                renderNowPlayingList();
-                saveState(); 
-            }
         }
         
         function renderPlaylists(playlistId = null) {
@@ -882,158 +811,83 @@
         function renderNowPlayingList() {
             dom.nowPlayingList.innerHTML = '';
             if (!state.currentSongId) return;
-
             const upcomingSongs = [];
-            
-            state.queue.forEach(songId => {
-                const song = getSongById(songId);
-                if (song) upcomingSongs.push(song);
-            });
-            
+            state.queue.forEach(songId => { const song = getSongById(songId); if (song) upcomingSongs.push(song); });
             if (state.contextIndex !== -1 && state.contextQueue.length > 0) {
                 for (let i = state.contextIndex + 1; i < state.contextQueue.length; i++) {
-                    const song = getSongById(state.contextQueue[i]);
-                    if (song) upcomingSongs.push(song);
+                    const song = getSongById(state.contextQueue[i]); if (song) upcomingSongs.push(song);
                 }
                 if (state.repeatMode === 'all') {
                     for (let i = 0; i < state.contextIndex; i++) {
-                        const song = getSongById(state.contextQueue[i]);
-                        if (song) upcomingSongs.push(song);
+                        const song = getSongById(state.contextQueue[i]); if (song) upcomingSongs.push(song);
                     }
                 }
             }
-
             if(upcomingSongs.length === 0) {
                  dom.nowPlayingList.innerHTML = `<li class="text-center text-secondary p-4 text-sm">Fin de la lista.</li>`;
                  return;
             }
-
-            upcomingSongs.slice(0, 10).forEach((song, index) => {
+            upcomingSongs.slice(0, 10).forEach((song) => {
                 const item = dom.songItemTemplate.content.cloneNode(true).querySelector('.list-item');
                 item.querySelector('.options-btn').remove();
                 item.querySelector('img').className = 'w-10 h-10 rounded-md object-cover flex-shrink-0 bg-tertiary';
                 item.querySelector('[data-title]').textContent = song.title; 
                 item.querySelector('[data-artist]').textContent = song.artist;
                 item.dataset.songId = song.id;
-                
                 item.addEventListener('click', () => {
-                    const clickedSongIndexInUpcoming = upcomingSongs.findIndex(s => s.id === song.id);
-                    const newQueue = upcomingSongs.slice(clickedSongIndexInUpcoming).map(s => s.id);
-                    
-                    state.queue = [];
-                    setContext('library'); 
-                    
-                    const songToPlayId = newQueue.shift();
-                    state.queue = newQueue;
-                    
-                    playSongFromContext(songToPlayId, 'library');
+                    const clickedIdx = upcomingSongs.findIndex(s => s.id === song.id);
+                    state.queue = upcomingSongs.slice(clickedIdx + 1).map(s => s.id);
+                    playSong(song.id);
                     toggleNowPlayingList(false);
                 });
-
                 dom.nowPlayingList.appendChild(item);
             });
         }
         
-        function createPlaylist() { showPromptModal("Nueva Playlist", "Nombre de la playlist", (name) => { if (name && name.trim()) { state.playlists.push({ id: self.crypto.randomUUID(), name: name.trim(), songIds: [] }); saveState(); renderPlaylists(); showToast(`Playlist "${name.trim()}" creada`); } }); }
-        function renamePlaylist(playlistId) { const playlist = state.playlists.find(p => p.id === playlistId); if (!playlist) return; showPromptModal("Renombrar Playlist", "Nuevo nombre", (newName) => { if (newName && newName.trim()) { playlist.name = newName.trim(); saveState(); renderPlaylists(); showToast("Playlist renombrada"); } }, playlist.name); }
-        function deletePlaylist(playlistId) { const playlist = state.playlists.find(p => p.id === playlistId); if (!playlist) return; showConfirmModal(`¿Eliminar "${playlist.name}"?`, "Esta acción no se puede deshacer.", () => { state.playlists = state.playlists.filter(p => p.id !== playlistId); saveState(); renderPlaylists(); showToast(`Playlist eliminada`); }); }
-        function addSongToPlaylist(songId, playlistId) { const playlist = state.playlists.find(p => p.id === playlistId); if (playlist && !playlist.songIds.includes(songId)) { playlist.songIds.push(songId); saveState(); showToast("Canción añadida a la playlist"); } }
+        function createPlaylist() { showPromptModal("Nueva Playlist", "Nombre", (name) => { if (name && name.trim()) { state.playlists.push({ id: self.crypto.randomUUID(), name: name.trim(), songIds: [] }); saveState(); renderPlaylists(); showToast(`Playlist "${name.trim()}" creada`); } }); }
+        function renamePlaylist(playlistId) { const p = state.playlists.find(p => p.id === playlistId); if (!p) return; showPromptModal("Renombrar Playlist", "Nuevo nombre", (n) => { if (n && n.trim()) { p.name = n.trim(); saveState(); renderPlaylists(); showToast("Playlist renombrada"); } }, p.name); }
+        function deletePlaylist(playlistId) { const p = state.playlists.find(p => p.id === playlistId); if (!p) return; showConfirmModal(`¿Eliminar "${p.name}"?`, "Esta acción no se puede deshacer.", () => { state.playlists = state.playlists.filter(pl => pl.id !== playlistId); saveState(); renderPlaylists(); showToast(`Playlist eliminada`); }); }
+        function addSongToPlaylist(songId, playlistId) { const p = state.playlists.find(p => p.id === playlistId); if (p && !p.songIds.includes(songId)) { p.songIds.push(songId); saveState(); showToast("Canción añadida a la playlist"); } }
         
         function showModal(content) { dom.modalContainer.innerHTML = `<div class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-70 opacity-0 transition-opacity"><div class="modal-content w-full max-w-sm rounded-xl shadow-2xl p-6 space-y-4">${content}</div></div>`; dom.modalContainer.classList.remove('hidden'); const backdrop = dom.modalContainer.querySelector('.modal-backdrop'); setTimeout(() => backdrop.classList.remove('opacity-0'), 10); return backdrop; }
-        function closeModal() { const backdrop = dom.modalContainer.querySelector('.modal-backdrop'); if (backdrop) { backdrop.classList.add('opacity-0'); setTimeout(() => { dom.modalContainer.classList.add('hidden'); dom.modalContainer.innerHTML = ''; }, 300); } }
+        function closeModal() { const b = dom.modalContainer.querySelector('.modal-backdrop'); if (b) { b.classList.add('opacity-0'); setTimeout(() => { dom.modalContainer.classList.add('hidden'); dom.modalContainer.innerHTML = ''; }, 300); } }
         
-        function openAddToPlaylistModal(songId) { let playlistItems = state.playlists.length > 0 ? state.playlists.map(p => `<li class="list-item p-3 rounded-lg cursor-pointer" data-id="${p.id}">${p.name}</li>`).join('') : `<li class="text-center text-secondary p-4">No hay playlists.</li>`; const modalContent = `<h2 class="text-xl font-bold text-primary">Añadir a...</h2><ul class="max-h-60 overflow-y-auto space-y-1">${playlistItems}</ul><button id="close-modal-btn" class="mt-4 w-full bg-tertiary text-primary py-2 rounded-lg hover-bg">Cerrar</button>`; const modal = showModal(modalContent); modal.querySelectorAll('.list-item').forEach(item => { item.addEventListener('click', () => { addSongToPlaylist(songId, item.dataset.id); closeModal(); }); }); modal.querySelector('#close-modal-btn').addEventListener('click', closeModal); }
+        function openAddToPlaylistModal(songId) { let items = state.playlists.length > 0 ? state.playlists.map(p => `<li class="list-item p-3 rounded-lg cursor-pointer" data-id="${p.id}">${p.name}</li>`).join('') : `<li class="text-center text-secondary p-4">No hay playlists.</li>`; const c = `<h2 class="text-xl font-bold text-primary">Añadir a...</h2><ul class="max-h-60 overflow-y-auto space-y-1">${items}</ul><button id="close-modal-btn" class="mt-4 w-full bg-tertiary text-primary py-2 rounded-lg hover-bg">Cerrar</button>`; const m = showModal(c); m.querySelectorAll('.list-item').forEach(i => { i.addEventListener('click', () => { addSongToPlaylist(songId, i.dataset.id); closeModal(); }); }); m.querySelector('#close-modal-btn').addEventListener('click', closeModal); }
         
         function openEditSongModal(songId) {
-            const song = getSongById(songId);
-            if (!song) return;
-
-            const modalContent = `
-                <h2 class="text-xl font-bold text-primary">Editar Canción</h2>
-                <div class="space-y-4">
-                    <div class="flex items-center space-x-4">
-                        <img id="edit-art-preview" src="${song.art || 'https://placehold.co/96x96/24283b/c0caf5'}" class="w-24 h-24 rounded-lg object-cover bg-tertiary flex-shrink-0">
-                        <div class="flex-grow">
-                            <label for="edit-art-file" class="action-btn cursor-pointer inline-block text-center w-full px-3 py-2 rounded-lg text-sm">Cambiar Portada</label>
-                            <input id="edit-art-file" type="file" accept="image/*" class="hidden">
-                            <p class="text-xs text-center mt-2">Sube una nueva imagen para la carátula.</p>
-                        </div>
-                    </div>
-                    <div>
-                        <label for="edit-title" class="text-sm block mb-1">Título</label>
-                        <input id="edit-title" type="text" value="${song.title}" class="form-input w-full p-2 rounded focus:outline-none focus:ring-2 focus:ring-accent-primary">
-                    </div>
-                    <div>
-                        <label for="edit-artist" class="text-sm block mb-1">Artista</label>
-                        <input id="edit-artist" type="text" value="${song.artist}" class="form-input w-full p-2 rounded focus:outline-none focus:ring-2 focus:ring-accent-primary">
-                    </div>
-                    <div>
-                        <label for="edit-album" class="text-sm block mb-1">Álbum</label>
-                        <input id="edit-album" type="text" value="${song.album}" class="form-input w-full p-2 rounded focus:outline-none focus:ring-2 focus:ring-accent-primary">
-                    </div>
-                </div>
-                <div class="flex justify-end space-x-2 mt-6">
-                    <button id="edit-cancel" class="bg-tertiary px-4 py-2 rounded-lg">Cancelar</button>
-                    <button id="edit-save" class="action-btn px-4 py-2 rounded-lg">Guardar</button>
-                </div>`;
-            
-            const modal = showModal(modalContent);
-            
-            const artPreview = modal.querySelector('#edit-art-preview');
-            const artFileInput = modal.querySelector('#edit-art-file');
-            let newArtData = null;
-
-            artFileInput.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (file && file.type.startsWith('image/')) {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        newArtData = event.target.result; 
-                        artPreview.src = newArtData;
-                    };
-                    reader.readAsDataURL(file);
-                }
+            const song = getSongById(songId); if (!song) return;
+            const c = `<h2 class="text-xl font-bold text-primary">Editar Canción</h2><div class="space-y-4"><div class="flex items-center space-x-4"><img id="edit-art-preview" src="${song.art || 'https://placehold.co/96x96/24283b/c0caf5'}" class="w-24 h-24 rounded-lg object-cover bg-tertiary flex-shrink-0"><div class="flex-grow"><label for="edit-art-file" class="action-btn cursor-pointer inline-block text-center w-full px-3 py-2 rounded-lg text-sm">Cambiar Portada</label><input id="edit-art-file" type="file" accept="image/*" class="hidden"><p class="text-xs text-center mt-2">Sube una nueva imagen.</p></div></div><div><label for="edit-title" class="text-sm block mb-1">Título</label><input id="edit-title" type="text" value="${song.title}" class="form-input w-full p-2 rounded focus:outline-none focus:ring-2 focus:ring-accent-primary"></div><div><label for="edit-artist" class="text-sm block mb-1">Artista</label><input id="edit-artist" type="text" value="${song.artist}" class="form-input w-full p-2 rounded focus:outline-none focus:ring-2 focus:ring-accent-primary"></div><div><label for="edit-album" class="text-sm block mb-1">Álbum</label><input id="edit-album" type="text" value="${song.album}" class="form-input w-full p-2 rounded focus:outline-none focus:ring-2 focus:ring-accent-primary"></div></div><div class="flex justify-end space-x-2 mt-6"><button id="edit-cancel" class="bg-tertiary px-4 py-2 rounded-lg">Cancelar</button><button id="edit-save" class="action-btn px-4 py-2 rounded-lg">Guardar</button></div>`;
+            const m = showModal(c);
+            let n = null;
+            m.querySelector('#edit-art-file').addEventListener('change', (e) => {
+                const f = e.target.files[0]; if (f && f.type.startsWith('image/')) { const r = new FileReader(); r.onload = (ev) => { n = ev.target.result; m.querySelector('#edit-art-preview').src = n; }; r.readAsDataURL(f); }
             });
-
-            modal.querySelector('#edit-save').addEventListener('click', () => {
-                song.title = modal.querySelector('#edit-title').value.trim() || 'Título Desconocido';
-                song.artist = modal.querySelector('#edit-artist').value.trim() || 'Artista Desconocido';
-                song.album = modal.querySelector('#edit-album').value.trim() || 'Álbum Desconocido';
-                
-                if (newArtData) {
-                    song.art = newArtData;
-                }
-
-                saveSongToDB(song); 
-                renderLibrary();
-                if (song.id === state.currentSongId) {
-                    updatePlayerUI(song);
-                    updateMediaSession(song);
-                }
-                updatePlayingStatusInLists();
-                closeModal();
-                showToast("Metadatos actualizados");
+            m.querySelector('#edit-save').addEventListener('click', () => {
+                song.title = m.querySelector('#edit-title').value.trim() || 'Título Desconocido'; song.artist = m.querySelector('#edit-artist').value.trim() || 'Artista Desconocido'; song.album = m.querySelector('#edit-album').value.trim() || 'Álbum Desconocido';
+                if (n) { song.art = n; }
+                saveSongToDB(song); renderLibrary();
+                if (song.id === state.currentSongId) { updatePlayerUI(song); updateMediaSession(song); }
+                updatePlayingStatusInLists(); closeModal(); showToast("Metadatos actualizados");
             });
-            modal.querySelector('#edit-cancel').addEventListener('click', closeModal);
+            m.querySelector('#edit-cancel').addEventListener('click', closeModal);
         }
 
-        function showPromptModal(title, label, callback, defaultValue = '') { const modalContent = `<h2 class="text-xl font-bold text-primary">${title}</h2><label for="prompt-input" class="text-sm">${label}</label><input id="prompt-input" type="text" value="${defaultValue}" class="form-input w-full p-2 rounded focus:outline-none focus:ring-2 focus:ring-accent-primary"><div class="flex justify-end space-x-2 mt-4"><button id="prompt-cancel" class="bg-tertiary px-4 py-2 rounded-lg">Cancelar</button><button id="prompt-ok" class="action-btn px-4 py-2 rounded-lg">Aceptar</button></div>`; const modal = showModal(modalContent); const input = modal.querySelector('#prompt-input'); input.focus(); input.select(); const handleOk = () => { const value = input.value; closeModal(); setTimeout(() => callback(value), 100); }; modal.querySelector('#prompt-ok').addEventListener('click', handleOk); input.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleOk(); }); modal.querySelector('#prompt-cancel').addEventListener('click', closeModal); }
-        function showConfirmModal(title, message, onConfirm) { const modalContent = `<h2 class="text-xl font-bold text-primary">${title}</h2><p class="text-sm">${message}</p><div class="flex justify-end space-x-2 mt-4"><button id="confirm-cancel" class="bg-tertiary px-4 py-2 rounded-lg">Cancelar</button><button id="confirm-ok" class="bg-red-600 text-white px-4 py-2 rounded-lg">Confirmar</button></div>`; const modal = showModal(modalContent); modal.querySelector('#confirm-ok').addEventListener('click', () => { onConfirm(); closeModal(); }); modal.querySelector('#confirm-cancel').addEventListener('click', closeModal); }
-        function showToast(message) { const toast = document.createElement('div'); toast.className = 'toast-notification'; toast.textContent = message; document.body.appendChild(toast); setTimeout(() => { toast.style.opacity = '1'; toast.style.transform = 'translate(-50%, 0)'; }, 10); setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translate(-50%, 20px)'; setTimeout(() => toast.remove(), 300); }, 2500); }
-        function showContextMenu(x, y, items) { dom.contextMenu.innerHTML = ''; items.forEach(item => { const li = document.createElement('li'); li.textContent = item.label; li.className = 'px-4 py-2 hover-bg rounded cursor-pointer'; li.addEventListener('click', () => { item.action(); hideContextMenu(); }); dom.contextMenu.appendChild(li); }); const menuWidth = dom.contextMenu.offsetWidth; const menuHeight = dom.contextMenu.offsetHeight; const correctedX = (x + menuWidth > window.innerWidth) ? window.innerWidth - menuWidth - 10 : x; const correctedY = (y + menuHeight > window.innerHeight) ? window.innerHeight - menuHeight - 10 : y; dom.contextMenu.style.left = `${correctedX}px`; dom.contextMenu.style.top = `${correctedY}px`; dom.contextMenu.classList.remove('hidden'); dom.contextMenuBackdrop.classList.remove('hidden'); }
+        function showPromptModal(title, label, callback, defaultValue = '') { const c=`<h2 class="text-xl font-bold text-primary">${title}</h2><label for="prompt-input" class="text-sm">${label}</label><input id="prompt-input" type="text" value="${defaultValue}" class="form-input w-full p-2 rounded focus:outline-none focus:ring-2 focus:ring-accent-primary"><div class="flex justify-end space-x-2 mt-4"><button id="prompt-cancel" class="bg-tertiary px-4 py-2 rounded-lg">Cancelar</button><button id="prompt-ok" class="action-btn px-4 py-2 rounded-lg">Aceptar</button></div>`; const m=showModal(c); const i=m.querySelector('#prompt-input'); i.focus(); i.select(); const h=()=>{const v=i.value;closeModal();setTimeout(()=>callback(v),100);}; m.querySelector('#prompt-ok').addEventListener('click',h); i.addEventListener('keydown',(e)=>{if(e.key==='Enter')h();}); m.querySelector('#prompt-cancel').addEventListener('click',closeModal); }
+        function showConfirmModal(title, message, onConfirm) { const c=`<h2 class="text-xl font-bold text-primary">${title}</h2><p class="text-sm">${message}</p><div class="flex justify-end space-x-2 mt-4"><button id="confirm-cancel" class="bg-tertiary px-4 py-2 rounded-lg">Cancelar</button><button id="confirm-ok" class="bg-red-600 text-white px-4 py-2 rounded-lg">Confirmar</button></div>`; const m=showModal(c); m.querySelector('#confirm-ok').addEventListener('click',()=>{onConfirm();closeModal();}); m.querySelector('#confirm-cancel').addEventListener('click',closeModal); }
+        function showToast(message) { const t=document.createElement('div'); t.className='toast-notification'; t.textContent=message; document.body.appendChild(t); setTimeout(()=>{t.style.opacity='1';t.style.transform='translate(-50%, 0)';},10); setTimeout(()=>{t.style.opacity='0';t.style.transform='translate(-50%, 20px)';setTimeout(()=>t.remove(),300);},2500); }
+        function showContextMenu(x,y,items){dom.contextMenu.innerHTML='';items.forEach(i=>{const l=document.createElement('li');l.textContent=i.label;l.className='px-4 py-2 hover-bg rounded cursor-pointer';l.addEventListener('click',()=>{i.action();hideContextMenu();});dom.contextMenu.appendChild(l);});const w=dom.contextMenu.offsetWidth;const h=dom.contextMenu.offsetHeight;const cX=(x+w>window.innerWidth)?window.innerWidth-w-10:x;const cY=(y+h>window.innerHeight)?window.innerHeight-h-10:y;dom.contextMenu.style.left=`${cX}px`;dom.contextMenu.style.top=`${cY}px`;dom.contextMenu.classList.remove('hidden');dom.contextMenuBackdrop.classList.remove('hidden');}
         function hideContextMenu() { dom.contextMenu.classList.add('hidden'); dom.contextMenuBackdrop.classList.add('hidden'); }
-        function openSettingsModal() { const modalContent = `<div class="flex justify-between items-center mb-2"><h2 class="text-2xl font-bold">Configuración</h2><button id="close-settings-btn" class="p-2 rounded-full hover-bg text-2xl leading-none">&times;</button></div><div class="space-y-2"><div class="flex items-center justify-between py-2"><label for="crossfade-toggle" class="text-sm">Crossfade Automático</label><div class="flex items-center space-x-3"><span id="crossfade-duration-label" class="text-xs w-12 text-center"></span><input type="range" id="crossfade-duration-slider" min="1" max="10" class="w-24"><input type="checkbox" id="crossfade-toggle" class="form-checkbox h-5 w-5 rounded bg-slate-700 border-slate-600 text-accent-primary focus:ring-accent-primary"></div></div> <div class="py-2"> <label class="text-sm">Tema</label> <div id="theme-selector" class="flex items-center space-x-4 py-2"><button data-theme="default" class="theme-btn w-8 h-8 rounded-full bg-[#1a1b26] border-2 border-slate-500"></button><button data-theme="sunset" class="theme-btn w-8 h-8 rounded-full bg-[#2d1d2b] border-2 border-slate-500"></button><button data-theme="ocean" class="theme-btn w-8 h-8 rounded-full bg-[#1f2c27] border-2 border-slate-500"></button></div></div></div>`; const modal = showModal(modalContent); modal.querySelector('#close-settings-btn').addEventListener('click', closeModal); const crossfadeToggle = modal.querySelector('#crossfade-toggle'); const crossfadeSlider = modal.querySelector('#crossfade-duration-slider'); const crossfadeLabel = modal.querySelector('#crossfade-duration-label'); crossfadeToggle.checked = state.settings.crossfadeEnabled; crossfadeSlider.value = state.settings.crossfadeDuration; crossfadeLabel.textContent = `${state.settings.crossfadeDuration}s`; crossfadeToggle.addEventListener('change', (e) => { state.settings.crossfadeEnabled = e.target.checked; saveState(); }); crossfadeSlider.addEventListener('input', (e) => { state.settings.crossfadeDuration = parseInt(e.target.value); crossfadeLabel.textContent = `${state.settings.crossfadeDuration}s`; }); crossfadeSlider.addEventListener('change', saveState); modal.querySelectorAll('.theme-btn').forEach(btn => btn.addEventListener('click', (e) => { state.settings.theme = e.currentTarget.dataset.theme; applyTheme(); saveState(); })); }
+        function openSettingsModal() { const c=`<div class="flex justify-between items-center mb-2"><h2 class="text-2xl font-bold">Configuración</h2><button id="close-settings-btn" class="p-2 rounded-full hover-bg text-2xl leading-none">&times;</button></div><div class="space-y-2"><div class="flex items-center justify-between py-2"><label for="crossfade-toggle" class="text-sm">Crossfade Automático</label><div class="flex items-center space-x-3"><span id="crossfade-duration-label" class="text-xs w-12 text-center"></span><input type="range" id="crossfade-duration-slider" min="1" max="10" class="w-24"><input type="checkbox" id="crossfade-toggle" class="form-checkbox h-5 w-5 rounded bg-slate-700 border-slate-600 text-accent-primary focus:ring-accent-primary"></div></div> <div class="py-2"> <label class="text-sm">Tema</label> <div id="theme-selector" class="flex items-center space-x-4 py-2"><button data-theme="default" class="theme-btn w-8 h-8 rounded-full bg-[#1a1b26] border-2 border-slate-500"></button><button data-theme="sunset" class="theme-btn w-8 h-8 rounded-full bg-[#2d1d2b] border-2 border-slate-500"></button><button data-theme="ocean" class="theme-btn w-8 h-8 rounded-full bg-[#1f2c27] border-2 border-slate-500"></button></div></div></div>`; const m=showModal(c); m.querySelector('#close-settings-btn').addEventListener('click',closeModal); const t=m.querySelector('#crossfade-toggle');const s=m.querySelector('#crossfade-duration-slider');const l=m.querySelector('#crossfade-duration-label'); t.checked=state.settings.crossfadeEnabled;s.value=state.settings.crossfadeDuration;l.textContent=`${state.settings.crossfadeDuration}s`; t.addEventListener('change',(e)=>{state.settings.crossfadeEnabled=e.target.checked;saveState();});s.addEventListener('input',(e)=>{state.settings.crossfadeDuration=parseInt(e.target.value);l.textContent=`${state.settings.crossfadeDuration}s`;});s.addEventListener('change',saveState); m.querySelectorAll('.theme-btn').forEach(b=>b.addEventListener('click',(e)=>{state.settings.theme=e.currentTarget.dataset.theme;applyTheme();saveState();})); }
         function applyTheme(){ dom.body.className = `theme-${state.settings.theme || 'default'}`; }
         function formatTime(s) { const m=Math.floor(s/60),c=Math.floor(s%60); return isNaN(m)?'0:00':`${m}:${c<10?'0':''}${c}`; }
         function arrayBufferToBase64(b) { let s='';new Uint8Array(b).forEach(v=>s+=String.fromCharCode(v));return window.btoa(s); }
-        function updateMediaSession(s) { if(!('mediaSession'in navigator))return;navigator.mediaSession.metadata=new MediaMetadata({title:s.title,artist:s.artist,album:s.album,artwork:[{src:s.art||''}]});navigator.mediaSession.setActionHandler('play',togglePlayPause);navigator.mediaSession.setActionHandler('pause',togglePlayPause);navigator.mediaSession.setActionHandler('nexttrack', () => playNextSong(false));navigator.mediaSession.setActionHandler('previoustrack',playPrevSong);navigator.mediaSession.setActionHandler('seekto', (details) => { audioManager.seek(details.seekTime); });}
+        function updateMediaSession(s) { if(!('mediaSession'in navigator))return;navigator.mediaSession.metadata=new MediaMetadata({title:s.title,artist:s.artist,album:s.album,artwork:[{src:s.art||''}]});navigator.mediaSession.setActionHandler('play',togglePlayPause);navigator.mediaSession.setActionHandler('pause',togglePlayPause);navigator.mediaSession.setActionHandler('nexttrack', () => playNextSong(false));navigator.mediaSession.setActionHandler('previoustrack',playPrevSong);navigator.mediaSession.setActionHandler('seekto', (details) => { currentAudio.currentTime = details.seekTime; });}
         function toggleShuffle() { state.isShuffle = !state.isShuffle; updateControlButtonsUI(); saveState(); renderNowPlayingList(); }
         function cycleRepeatMode() { const modes = ['none', 'all', 'one']; state.repeatMode = modes[(modes.indexOf(state.repeatMode) + 1) % modes.length]; updateControlButtonsUI(); saveState(); renderNowPlayingList(); }
         
         function updateControlButtonsUI() {
             dom.shuffleBtn.classList.toggle('active', state.isShuffle);
             dom.repeatBtn.classList.toggle('active', state.repeatMode !== 'none');
-            
             const repeatIconSVG = {
                 none: `<polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path>`,
                 all: `<polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path>`,
