@@ -342,17 +342,13 @@
             transaction.objectStore('songs').put(songToSave);
         }
 
+        // **CORRECCIÓN:** No se crea la URL aquí para evitar que se invalide al cerrar la app.
         function loadSongsFromDB(onLoad) {
             if (!db) return;
             const request = db.transaction(['songs'], 'readonly').objectStore('songs').getAll();
             request.onsuccess = () => {
-                const songs = request.result.map(song => {
-                    const blob = base64ToBlob(song.data, 'audio/mpeg');
-                    return {
-                        ...song,
-                        url: URL.createObjectURL(blob)
-                    };
-                });
+                // Simplemente cargamos los datos, la URL se creará justo antes de reproducir.
+                const songs = request.result; 
                 onLoad(songs);
             };
         }
@@ -376,27 +372,35 @@
             function play(song, startTime = 0) {
                 if (!song) return; 
 
+                // **CORRECCIÓN:** Se crea una URL nueva y válida justo aquí.
+                if (!song.url || !song.url.startsWith('blob:')) {
+                    const blob = base64ToBlob(song.data, 'audio/mpeg');
+                    song.url = URL.createObjectURL(blob);
+                }
+
                 audio1.pause();
                 audio2.pause();
 
                 currentAudio.src = song.url; 
                 currentAudio.currentTime = startTime; 
                 currentAudio.volume = state.volume;
-                currentAudio.play().then(() => { 
-                    state.isPlaying = true; 
-                    updateUIonPlayPause(); 
-                }).catch(e => console.error("Error al reproducir:", e));
+                const playPromise = currentAudio.play();
+                
+                if (playPromise !== undefined) {
+                    playPromise.then(() => { 
+                        state.isPlaying = true; 
+                        updateUIonPlayPause(); 
+                    }).catch(e => {
+                        console.error("Error al reproducir:", e);
+                        state.isPlaying = false;
+                        updateUIonPlayPause();
+                    });
+                }
             }
             function pause() { 
                 currentAudio.pause(); 
                 state.isPlaying = false; 
                 updateUIonPlayPause(); 
-            }
-            function resume() { 
-                currentAudio.play().then(() => { 
-                    state.isPlaying = true; 
-                    updateUIonPlayPause(); 
-                }).catch(e => console.error("Error al reanudar:", e)); 
             }
             
             [audio1, audio2].forEach(audio => {
@@ -414,7 +418,7 @@
             });
             
             return { 
-                play, pause, resume, 
+                play, pause, 
                 seek: (time) => { if (!isCrossfading) currentAudio.currentTime = time; },
                 setVolume: (vol) => { 
                     currentAudio.volume = vol; 
@@ -459,6 +463,11 @@
             if (!nextSong || isCrossfading) return;
             isCrossfading = true;
 
+            if (!nextSong.url || !nextSong.url.startsWith('blob:')) {
+                const blob = base64ToBlob(nextSong.data, 'audio/mpeg');
+                nextSong.url = URL.createObjectURL(blob);
+            }
+
             standbyAudio.src = nextSong.url;
             standbyAudio.volume = 0;
             standbyAudio.play().catch(e => console.error("Error al iniciar crossfade:", e));
@@ -491,7 +500,7 @@
         function playNextSong(isAuto = false) {
              if (isCrossfading) return;
             if (state.repeatMode === 'one' && isAuto) {
-                audioManager.play(getSongById(state.currentSongId), 0);
+                playSongFromContext(state.currentSongId, state.currentContext.type, state.currentContext.id);
                 return;
             }
 
@@ -508,13 +517,7 @@
             if (isAuto && state.settings.crossfadeEnabled) {
                 crossfadeToSong(nextSongToPlay);
             } else {
-                state.currentSongId = nextSongToPlay.id;
-                audioManager.play(nextSongToPlay);
-                updatePlayerUI(nextSongToPlay);
-                updateMediaSession(nextSongToPlay);
-                updatePlayingStatusInLists();
-                renderNowPlayingList();
-                saveState();
+                playSongFromContext(nextSongToPlay.id, state.currentContext.type, state.currentContext.id);
             }
         }
 
@@ -523,14 +526,7 @@
             let prevIndex = (state.contextIndex > 0 && !state.isShuffle) ? state.contextIndex - 1 : 0;
             const prevSongId = state.contextQueue[prevIndex];
             if (prevSongId) {
-                state.contextIndex = prevIndex; const song = getSongById(prevSongId);
-                state.currentSongId = song.id; 
-                audioManager.play(song);
-                updatePlayerUI(song); 
-                updateMediaSession(song); 
-                updatePlayingStatusInLists(); 
-                renderNowPlayingList();
-                saveState();
+                playSongFromContext(prevSongId, state.currentContext.type, state.currentContext.id);
             }
         }
         
@@ -619,12 +615,22 @@
                 return acc;
             }, {});
 
-            const createSection = (title, content) => {
+            // **NUEVO:** Filtrar canciones descargadas
+            const downloadedSongs = state.library.filter(song => song.isDownloaded);
+
+            const createSection = (title, content, emptyMessage = "") => {
                 const details = document.createElement('details');
                 const summary = document.createElement('summary');
                 summary.textContent = title;
                 details.appendChild(summary);
-                details.appendChild(content);
+                if (content.childElementCount > 0) {
+                    details.appendChild(content);
+                } else if(emptyMessage) {
+                    const emptyDiv = document.createElement('div');
+                    emptyDiv.className = 'text-center text-secondary p-4 text-sm';
+                    emptyDiv.textContent = emptyMessage;
+                    details.appendChild(emptyDiv);
+                }
                 return details;
             };
 
@@ -635,6 +641,14 @@
             songsContainer.appendChild(songsList);
             dom.libraryContent.appendChild(createSection('Canciones', songsContainer));
             
+            // **NUEVO:** Renderizar la sección de descargas
+            const downloadsContainer = document.createElement('div');
+            const downloadsList = document.createElement('ul');
+            downloadsList.className = 'space-y-1';
+            downloadedSongs.forEach(song => downloadsList.appendChild(createSongListItem(song)));
+            downloadsContainer.appendChild(downloadsList);
+            dom.libraryContent.appendChild(createSection('Descargas', downloadsContainer, "Aún no tienes descargas."));
+
             const artistsContainer = document.createElement('div');
             Object.keys(artists).sort().forEach(artistName => {
                 const artistDetails = document.createElement('details');
@@ -697,10 +711,17 @@
             });
         }
 
+        // **CORRECCIÓN:** Lógica de reproducción simplificada para manejar URLs inválidas.
         function togglePlayPause() {
-            if (state.isPlaying) audioManager.pause(); 
-            else if (state.currentSongId) audioManager.resume();
-            else if (state.library.length > 0) playSongFromContext(state.library[0].id, 'library');
+            if (state.isPlaying) {
+                audioManager.pause();
+            } else if (state.currentSongId) {
+                const song = getSongById(state.currentSongId);
+                // Usamos play() con la posición actual para regenerar la URL si es necesario.
+                audioManager.play(song, currentAudio.currentTime); 
+            } else if (state.library.length > 0) {
+                playSongFromContext(state.library[0].id, 'library');
+            }
         }
 
         function setupEventListeners() {
@@ -781,9 +802,7 @@
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const data = arrayBufferToBase64(e.target.result); 
-                    const blob = base64ToBlob(data, file.type);
-                    const songUrl = URL.createObjectURL(blob);
-
+                    
                     window.jsmediatags.read(file, {
                         onSuccess: (tag) => {
                             const { title, artist, album, picture } = tag.tags;
@@ -794,7 +813,7 @@
                                 album: album || 'Desconocido', 
                                 art: picture ? `data:${picture.format};base64,${window.btoa(picture.data.reduce((acc, byte) => acc + String.fromCharCode(byte), ''))}` : null, 
                                 data, 
-                                url: songUrl 
+                                // 'url' se creará al reproducir
                             });
                         }, onError: (error) => {
                              resolve({ 
@@ -804,7 +823,6 @@
                                 album: 'Desconocido', 
                                 art: null, 
                                 data, 
-                                url: songUrl 
                             });
                         }
                     });
@@ -829,9 +847,9 @@
             
             const song = getSongById(songId);
             if(song) {
-                const currentSong = getSongById(state.currentSongId);
-                if (currentSong && currentSong.url && currentSong.url.startsWith('blob:')) {
-                    URL.revokeObjectURL(currentSong.url);
+                const previousSong = getSongById(state.currentSongId);
+                if (previousSong && previousSong.id !== song.id && previousSong.url && previousSong.url.startsWith('blob:')) {
+                    URL.revokeObjectURL(previousSong.url);
                 }
 
                 state.contextIndex = state.contextQueue.findIndex(id => id === songId); 
